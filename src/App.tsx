@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { Setup } from "./routes/Setup";
 import { Unlock } from "./routes/Unlock";
 import { List } from "./routes/List";
@@ -9,7 +10,7 @@ import "./App.css";
 type Screen =
   | { kind: "loading" }
   | { kind: "setup" }
-  | { kind: "unlock" }
+  | { kind: "unlock"; reason?: "idle" | "manual" }
   | { kind: "list" }
   | { kind: "detail"; itemId: string | "new" };
 
@@ -19,6 +20,20 @@ export default function App() {
 
   useEffect(() => {
     void boot();
+
+    // Backend will emit "vault-locked" when the idle watcher fires.
+    // No need to clean up before unmount — the App lives for the entire
+    // window lifetime — but tauri's listen returns an unlisten fn anyway.
+    const unlistenPromise = listen<string>("vault-locked", (event) => {
+      setScreen({
+        kind: "unlock",
+        reason: event.payload === "idle" ? "idle" : "manual",
+      });
+    });
+
+    return () => {
+      void unlistenPromise.then((fn) => fn());
+    };
   }, []);
 
   async function boot() {
@@ -43,14 +58,19 @@ export default function App() {
       return <Setup onCreated={() => setScreen({ kind: "list" })} />;
 
     case "unlock":
-      return <Unlock onUnlocked={() => setScreen({ kind: "list" })} />;
+      return (
+        <Unlock
+          reason={screen.reason}
+          onUnlocked={() => setScreen({ kind: "list" })}
+        />
+      );
 
     case "list":
       return (
         <List
           refreshKey={refreshKey}
           onSelect={(id) => setScreen({ kind: "detail", itemId: id })}
-          onLock={() => setScreen({ kind: "unlock" })}
+          onLock={() => setScreen({ kind: "unlock", reason: "manual" })}
         />
       );
 

@@ -4,9 +4,10 @@ import { isAppError } from "../lib/types";
 
 interface Props {
   onUnlocked: () => void;
+  reason?: "idle" | "manual";
 }
 
-export function Unlock({ onUnlocked }: Props) {
+export function Unlock({ onUnlocked, reason }: Props) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,9 @@ export function Unlock({ onUnlocked }: Props) {
     <div className="screen centered">
       <form className="card" onSubmit={submit}>
         <h1>解鎖 Keytainer</h1>
+        {reason === "idle" && (
+          <p className="muted">已自動鎖定（閒置過久）</p>
+        )}
         <label>
           主密碼
           <input

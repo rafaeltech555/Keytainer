@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ItemInput, ItemSummary, VaultItem } from "./types";
+import type { ItemInput, ItemSummary, Settings, TotpState, VaultItem } from "./types";
 
 export const ipc = {
   vaultExists: () => invoke<boolean>("vault_exists"),
@@ -26,6 +26,17 @@ export const ipc = {
     invoke<void>("update_item", { item }),
 
   deleteItem: (id: string) => invoke<void>("delete_item", { id }),
+
+  computeTotp: (id: string) => invoke<TotpState>("compute_totp", { id }),
+
+  copyPassword: (id: string) => invoke<void>("copy_password", { id }),
+
+  copyTotp: (id: string) => invoke<void>("copy_totp", { id }),
+
+  getSettings: () => invoke<Settings>("get_settings"),
+
+  saveSettings: (newSettings: Settings) =>
+    invoke<void>("save_settings", { newSettings }),
 
   generatePassword: (length: number, includeSymbols: boolean) =>
     invoke<string>("generate_password", { length, includeSymbols }),

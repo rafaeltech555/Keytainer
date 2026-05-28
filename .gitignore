@@ -36,3 +36,14 @@ src-tauri/target/
 .env
 .env.*
 !.env.example
+
+# AI tooling configs (personal; not for a public repo)
+.claude/
+.cursorrules
+.kiro/
+.mcp.json
+.opencode.json
+.windsurfrules
+AGENTS.md
+CLAUDE.md
+GEMINI.md

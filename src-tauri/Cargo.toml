@@ -51,7 +51,7 @@ arboard = { version = "3", optional = true }
 keyring = { version = "3", features = ["sync-secret-service"], optional = true }
 
 [features]
-default = []
+default = ["clipboard", "keychain"]
 clipboard = ["dep:arboard"]
 keychain = ["dep:keyring"]
 

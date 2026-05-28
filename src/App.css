@@ -309,3 +309,39 @@ button.danger {
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* TOTP / quick actions */
+.quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.totp-display {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  flex: 1;
+}
+
+.totp-code-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.totp-code {
+  font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 22px;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  flex: 1;
+}
+
+.totp-ring {
+  flex-shrink: 0;
+  color: var(--muted);
+}

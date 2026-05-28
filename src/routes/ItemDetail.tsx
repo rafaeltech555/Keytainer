@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ipc } from "../lib/ipc";
 import type { ItemInput, VaultItem, TotpEntry, TotpAlg } from "../lib/types";
 import { isAppError } from "../lib/types";
+import { TotpDisplay } from "../components/TotpDisplay";
 
 interface Props {
   itemId: string | "new";
@@ -31,6 +32,16 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   const [loading, setLoading] = useState(!isNew);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const savedItemId: string | null = isNew ? null : (itemId as string);
+  const [pwCopied, setPwCopied] = useState(false);
+  const pwCopiedTimer = useRef<number | null>(null);
+  const [showTotpCode, setShowTotpCode] = useState(true);
+
+  useEffect(() => {
+    ipc.getSettings()
+      .then((s) => setShowTotpCode(s.show_totp_code))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isNew) return;
@@ -77,6 +88,18 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
     const pw = await ipc.generatePassword(20, true);
     patch("password", pw);
     setShowPw(true);
+  }
+
+  async function copyPassword() {
+    if (!savedItemId) return;
+    try {
+      await ipc.copyPassword(savedItemId);
+      setPwCopied(true);
+      if (pwCopiedTimer.current) window.clearTimeout(pwCopiedTimer.current);
+      pwCopiedTimer.current = window.setTimeout(() => setPwCopied(false), 1500);
+    } catch (e) {
+      setError(isAppError(e) ? e.message : String(e));
+    }
   }
 
   async function save(e: React.FormEvent) {
@@ -132,6 +155,18 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
           </button>
         )}
       </header>
+
+      {/* For saved items: action chips for one-click copy + live TOTP */}
+      {savedItemId && (
+        <div className="quick-actions">
+          <button type="button" onClick={copyPassword}>
+            {pwCopied ? "已複製密碼 ✓" : "複製密碼"}
+          </button>
+          {hasTotp && (
+            <TotpDisplay itemId={savedItemId} showCode={showTotpCode} />
+          )}
+        </div>
+      )}
 
       <form onSubmit={save} className="detail-form">
         <label>
@@ -287,3 +322,4 @@ function TotpFields({ totp, onChange, onRemove }: TotpFieldsProps) {
     </div>
   );
 }
+

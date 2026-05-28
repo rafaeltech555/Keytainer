@@ -69,3 +69,15 @@ export function isAppError(e: unknown): e is AppError {
     "message" in e
   );
 }
+
+export interface TotpState {
+  code: string;
+  remaining_seconds: number;
+  period: number;
+}
+
+export interface Settings {
+  auto_lock_seconds: number;
+  clipboard_clear_seconds: number;
+  show_totp_code: boolean;
+}

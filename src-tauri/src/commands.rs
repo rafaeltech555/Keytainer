@@ -1,15 +1,18 @@
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
+use crate::clipboard::ClipboardState;
 use crate::crypto::{self, KdfParams};
 use crate::error::{AppError, AppResult};
 use crate::paths;
-use crate::session::{AppState, UnlockedSession};
+use crate::session::{spawn_idle_watcher, AppState, UnlockedSession};
+use crate::settings::{self, Settings};
+use crate::totp;
 use crate::vault::{self, crud, TotpEntry, Vault, VaultItem};
 
-/// Item summary returned by `list_items`. Excludes password and TOTP secret
-/// so the list view never has secrets in memory unnecessarily.
 #[derive(Debug, Serialize)]
 pub struct ItemSummary {
     pub id: Uuid,
@@ -35,8 +38,6 @@ impl From<&VaultItem> for ItemSummary {
     }
 }
 
-/// Payload accepted from the frontend when creating/updating an item.
-/// We never trust the client to set timestamps or assign IDs on create.
 #[derive(Debug, Deserialize)]
 pub struct ItemInput {
     #[serde(default)]
@@ -71,11 +72,23 @@ impl ItemInput {
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct TotpState {
+    pub code: String,
+    pub remaining_seconds: u32,
+    pub period: u32,
+}
+
+fn now_unix() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
 #[tauri::command]
 pub fn vault_exists() -> bool {
-    paths::vault_path()
-        .map(|p| p.exists())
-        .unwrap_or(false)
+    paths::vault_path().map(|p| p.exists()).unwrap_or(false)
 }
 
 #[tauri::command]
@@ -84,7 +97,7 @@ pub fn is_unlocked(state: State<'_, AppState>) -> bool {
 }
 
 #[tauri::command]
-pub fn create_vault(password: String, state: State<'_, AppState>) -> AppResult<()> {
+pub fn create_vault(password: String, state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
     if password.is_empty() {
         return Err(AppError::Crypto("password must not be empty".into()));
     }
@@ -100,13 +113,21 @@ pub fn create_vault(password: String, state: State<'_, AppState>) -> AppResult<(
     let vault = Vault::default();
     vault::store::save(&path, &vault, &key, kdf, salt)?;
 
-    let session = UnlockedSession { vault, key, salt, kdf };
-    *state.session.lock().map_err(|_| AppError::Locked)? = Some(session);
+    *state.session.lock().map_err(|_| AppError::Locked)? = Some(UnlockedSession {
+        vault,
+        key,
+        salt,
+        kdf,
+    });
+    state.touch();
+
+    let cfg = settings::load();
+    spawn_idle_watcher(app, Duration::from_secs(cfg.auto_lock_seconds));
     Ok(())
 }
 
 #[tauri::command]
-pub fn unlock(password: String, state: State<'_, AppState>) -> AppResult<()> {
+pub fn unlock(password: String, state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
     let path = paths::vault_path()?;
     if !path.exists() {
         return Err(AppError::NotInitialised);
@@ -118,6 +139,10 @@ pub fn unlock(password: String, state: State<'_, AppState>) -> AppResult<()> {
         salt,
         kdf,
     });
+    state.touch();
+
+    let cfg = settings::load();
+    spawn_idle_watcher(app, Duration::from_secs(cfg.auto_lock_seconds));
     Ok(())
 }
 
@@ -134,11 +159,7 @@ pub fn list_items(query: Option<String>, state: State<'_, AppState>) -> AppResul
             .into_iter()
             .map(ItemSummary::from)
             .collect();
-        items.sort_by(|a, b| {
-            a.site_name
-                .to_lowercase()
-                .cmp(&b.site_name.to_lowercase())
-        });
+        items.sort_by(|a, b| a.site_name.to_lowercase().cmp(&b.site_name.to_lowercase()));
         Ok(items)
     })
 }
@@ -194,8 +215,72 @@ pub fn delete_item(id: Uuid, state: State<'_, AppState>) -> AppResult<()> {
     })
 }
 
-/// Phase 4 — basic password generator. Produces fresh randomness from the
-/// OS CSPRNG; doesn't touch the vault, so it's available even when locked.
+/// Compute the current TOTP code and seconds remaining for an item.
+/// Polled by the frontend once per second while a detail view is open.
+#[tauri::command]
+pub fn compute_totp(id: Uuid, state: State<'_, AppState>) -> AppResult<TotpState> {
+    let now = now_unix();
+    state.with_session(|s| {
+        let item = s
+            .vault
+            .items
+            .iter()
+            .find(|i| i.id == id)
+            .ok_or(AppError::ItemNotFound(id))?;
+        let entry = item.totp.as_ref().ok_or(AppError::InvalidTotpSecret)?;
+        Ok(TotpState {
+            code: totp::code_at(entry, now)?,
+            remaining_seconds: totp::remaining_seconds(entry, now),
+            period: entry.period,
+        })
+    })
+}
+
+/// Copy an item's password to the system clipboard. Schedules an auto-clear
+/// after `clipboard_clear_seconds` (from settings).
+#[tauri::command]
+pub fn copy_password(
+    id: Uuid,
+    state: State<'_, AppState>,
+    clipboard: State<'_, ClipboardState>,
+) -> AppResult<()> {
+    let secret = state.with_session(|s| {
+        s.vault
+            .items
+            .iter()
+            .find(|i| i.id == id)
+            .map(|i| i.password.clone())
+            .ok_or(AppError::ItemNotFound(id))
+    })?;
+    let cfg = settings::load();
+    clipboard.write_with_auto_clear(secret, Duration::from_secs(cfg.clipboard_clear_seconds))
+}
+
+/// Copy an item's current TOTP code (not the secret) to the clipboard.
+#[tauri::command]
+pub fn copy_totp(
+    id: Uuid,
+    state: State<'_, AppState>,
+    clipboard: State<'_, ClipboardState>,
+) -> AppResult<()> {
+    let totp_state = compute_totp(id, state)?;
+    let cfg = settings::load();
+    clipboard
+        .write_with_auto_clear(totp_state.code, Duration::from_secs(cfg.clipboard_clear_seconds))
+}
+
+#[tauri::command]
+pub fn get_settings() -> Settings {
+    settings::load()
+}
+
+#[tauri::command]
+pub fn save_settings(new_settings: Settings) -> AppResult<()> {
+    settings::save(&new_settings)
+}
+
+/// Password generator. Produces fresh randomness from the OS CSPRNG;
+/// doesn't touch the vault, so it's available even when locked.
 #[tauri::command]
 pub fn generate_password(length: usize, include_symbols: bool) -> String {
     use rand::seq::SliceRandom;
