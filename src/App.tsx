@@ -1,51 +1,73 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+import { Setup } from "./routes/Setup";
+import { Unlock } from "./routes/Unlock";
+import { List } from "./routes/List";
+import { ItemDetail } from "./routes/ItemDetail";
+import { ipc } from "./lib/ipc";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+type Screen =
+  | { kind: "loading" }
+  | { kind: "setup" }
+  | { kind: "unlock" }
+  | { kind: "list" }
+  | { kind: "detail"; itemId: string | "new" };
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+export default function App() {
+  const [screen, setScreen] = useState<Screen>({ kind: "loading" });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    void boot();
+  }, []);
+
+  async function boot() {
+    const exists = await ipc.vaultExists();
+    if (!exists) {
+      setScreen({ kind: "setup" });
+      return;
+    }
+    const unlocked = await ipc.isUnlocked();
+    setScreen({ kind: unlocked ? "list" : "unlock" });
   }
 
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+  function bumpList() {
+    setRefreshKey((k) => k + 1);
+  }
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+  switch (screen.kind) {
+    case "loading":
+      return <div className="screen centered"><p>載入中…</p></div>;
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+    case "setup":
+      return <Setup onCreated={() => setScreen({ kind: "list" })} />;
+
+    case "unlock":
+      return <Unlock onUnlocked={() => setScreen({ kind: "list" })} />;
+
+    case "list":
+      return (
+        <List
+          refreshKey={refreshKey}
+          onSelect={(id) => setScreen({ kind: "detail", itemId: id })}
+          onLock={() => setScreen({ kind: "unlock" })}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
-}
+      );
 
-export default App;
+    case "detail":
+      return (
+        <ItemDetail
+          itemId={screen.itemId}
+          onClose={() => setScreen({ kind: "list" })}
+          onSaved={() => {
+            bumpList();
+            setScreen({ kind: "list" });
+          }}
+          onDeleted={() => {
+            bumpList();
+            setScreen({ kind: "list" });
+          }}
+        />
+      );
+  }
+}
