@@ -4,6 +4,7 @@ import { Setup } from "./routes/Setup";
 import { Unlock } from "./routes/Unlock";
 import { List } from "./routes/List";
 import { ItemDetail } from "./routes/ItemDetail";
+import { Settings } from "./routes/Settings";
 import { ipc } from "./lib/ipc";
 import "./App.css";
 
@@ -12,7 +13,8 @@ type Screen =
   | { kind: "setup" }
   | { kind: "unlock"; reason?: "idle" | "manual" }
   | { kind: "list" }
-  | { kind: "detail"; itemId: string | "new" };
+  | { kind: "detail"; itemId: string | "new" }
+  | { kind: "settings" };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
@@ -21,9 +23,6 @@ export default function App() {
   useEffect(() => {
     void boot();
 
-    // Backend will emit "vault-locked" when the idle watcher fires.
-    // No need to clean up before unmount — the App lives for the entire
-    // window lifetime — but tauri's listen returns an unlisten fn anyway.
     const unlistenPromise = listen<string>("vault-locked", (event) => {
       setScreen({
         kind: "unlock",
@@ -71,6 +70,7 @@ export default function App() {
           refreshKey={refreshKey}
           onSelect={(id) => setScreen({ kind: "detail", itemId: id })}
           onLock={() => setScreen({ kind: "unlock", reason: "manual" })}
+          onSettings={() => setScreen({ kind: "settings" })}
         />
       );
 
@@ -84,6 +84,16 @@ export default function App() {
             setScreen({ kind: "list" });
           }}
           onDeleted={() => {
+            bumpList();
+            setScreen({ kind: "list" });
+          }}
+        />
+      );
+
+    case "settings":
+      return (
+        <Settings
+          onClose={() => {
             bumpList();
             setScreen({ kind: "list" });
           }}

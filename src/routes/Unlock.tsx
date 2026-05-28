@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ipc } from "../lib/ipc";
 import { isAppError } from "../lib/types";
 
@@ -11,6 +11,13 @@ export function Unlock({ onUnlocked, reason }: Props) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [keychainOption, setKeychainOption] = useState(false);
+
+  useEffect(() => {
+    Promise.all([ipc.keychainAvailable(), ipc.keychainIsEnabled()])
+      .then(([supp, en]) => setKeychainOption(supp && en))
+      .catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +41,26 @@ export function Unlock({ onUnlocked, reason }: Props) {
     }
   }
 
+  async function quickUnlock() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await ipc.unlockWithKeychain();
+      onUnlocked();
+    } catch (e) {
+      if (isAppError(e) && e.kind === "KeychainUnavailable") {
+        setError("Keychain 無法存取，請改用主密碼");
+      } else if (isAppError(e) && e.kind === "WrongPassword") {
+        setError("Keychain 內的金鑰跟保險庫對不起來，請改用主密碼");
+      } else {
+        setError(isAppError(e) ? e.message : String(e));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="screen centered">
       <form className="card" onSubmit={submit}>
@@ -41,6 +68,13 @@ export function Unlock({ onUnlocked, reason }: Props) {
         {reason === "idle" && (
           <p className="muted">已自動鎖定（閒置過久）</p>
         )}
+
+        {keychainOption && (
+          <button type="button" className="secondary" onClick={quickUnlock} disabled={busy}>
+            🔑 用系統 keychain 一鍵解鎖
+          </button>
+        )}
+
         <label>
           主密碼
           <input

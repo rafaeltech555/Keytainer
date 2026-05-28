@@ -1,12 +1,15 @@
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 
+use crate::backup;
 use crate::clipboard::ClipboardState;
 use crate::crypto::{self, KdfParams};
 use crate::error::{AppError, AppResult};
+use crate::keychain;
 use crate::paths;
 use crate::session::{spawn_idle_watcher, AppState, UnlockedSession};
 use crate::settings::{self, Settings};
@@ -152,11 +155,20 @@ pub fn lock(state: State<'_, AppState>) {
 }
 
 #[tauri::command]
-pub fn list_items(query: Option<String>, state: State<'_, AppState>) -> AppResult<Vec<ItemSummary>> {
+pub fn list_items(
+    query: Option<String>,
+    tag: Option<String>,
+    state: State<'_, AppState>,
+) -> AppResult<Vec<ItemSummary>> {
     state.with_session(|s| {
         let q = query.unwrap_or_default();
+        let tag_filter = tag.unwrap_or_default();
         let mut items: Vec<ItemSummary> = crud::search(&s.vault, &q)
             .into_iter()
+            .filter(|i| {
+                tag_filter.is_empty()
+                    || i.tags.iter().any(|t| t.eq_ignore_ascii_case(&tag_filter))
+            })
             .map(ItemSummary::from)
             .collect();
         items.sort_by(|a, b| a.site_name.to_lowercase().cmp(&b.site_name.to_lowercase()));
@@ -294,4 +306,117 @@ pub fn generate_password(length: usize, include_symbols: bool) -> String {
     (0..length)
         .map(|_| *alphabet.choose(&mut rng).expect("alphabet is non-empty") as char)
         .collect()
+}
+
+// ──────────────────────────── Backup / Restore ────────────────────────────
+
+#[tauri::command]
+pub fn export_vault(
+    path: String,
+    password: String,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
+    if password.is_empty() {
+        return Err(AppError::Crypto("backup password must not be empty".into()));
+    }
+    state.with_session(|s| backup::export_to_file(&PathBuf::from(&path), &s.vault, &password))
+}
+
+#[derive(Debug, Serialize)]
+pub struct ImportReport {
+    pub added: usize,
+    pub updated: usize,
+}
+
+/// Merge items from a backup file into the current (unlocked) vault.
+/// Items with a matching id replace the existing one (last-write-wins);
+/// items with new ids are appended. Non-destructive otherwise.
+#[tauri::command]
+pub fn import_vault(
+    path: String,
+    password: String,
+    state: State<'_, AppState>,
+) -> AppResult<ImportReport> {
+    let imported = backup::import_from_file(&PathBuf::from(&path), &password)?;
+    let save_path = paths::vault_path()?;
+    state.with_session(|s| {
+        let mut added = 0usize;
+        let mut updated = 0usize;
+        for item in imported.items {
+            match s.vault.items.iter_mut().find(|i| i.id == item.id) {
+                Some(existing) => {
+                    *existing = item;
+                    updated += 1;
+                }
+                None => {
+                    s.vault.items.push(item);
+                    added += 1;
+                }
+            }
+        }
+        for t in imported.tags {
+            if !s.vault.tags.iter().any(|x| x.eq_ignore_ascii_case(&t)) {
+                s.vault.tags.push(t);
+            }
+        }
+        vault::store::save(&save_path, &s.vault, &s.key, s.kdf, s.salt)?;
+        Ok(ImportReport { added, updated })
+    })
+}
+
+// ───────────────────────────── OS Keychain ────────────────────────────────
+
+#[tauri::command]
+pub fn keychain_available() -> bool {
+    keychain::is_supported()
+}
+
+#[tauri::command]
+pub fn keychain_is_enabled() -> bool {
+    keychain::load_key().is_ok()
+}
+
+/// Stash the current session's derived key in the OS keychain so the user
+/// can unlock without re-entering their master password on next launch.
+/// Requires an unlocked vault.
+#[tauri::command]
+pub fn keychain_enable(state: State<'_, AppState>) -> AppResult<()> {
+    state.with_session(|s| keychain::store_key(&s.key))
+}
+
+#[tauri::command]
+pub fn keychain_disable() -> AppResult<()> {
+    keychain::delete_key()
+}
+
+/// Try to unlock the vault using a key cached in the OS keychain. Returns
+/// `WrongPassword` if the cached key doesn't match the vault (e.g., the
+/// user changed their master password elsewhere).
+#[tauri::command]
+pub fn unlock_with_keychain(state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
+    let path = paths::vault_path()?;
+    if !path.exists() {
+        return Err(AppError::NotInitialised);
+    }
+    let key = keychain::load_key()?;
+
+    // Re-implement enough of vault::store::load to bypass the password KDF:
+    // read the header, use the cached key against the same nonce/ciphertext.
+    let bytes = std::fs::read(&path)?;
+    let file = vault::store::decode(&bytes)?;
+    let plaintext = crypto::decrypt(&key, &file.nonce, &file.ciphertext)?;
+    let vault: Vault =
+        serde_json::from_slice(&plaintext).map_err(|_| AppError::VaultCorrupt)?;
+
+    *state.session.lock().map_err(|_| AppError::Locked)? = Some(UnlockedSession {
+        vault,
+        key,
+        salt: file.salt,
+        kdf: file.kdf,
+    });
+    state.touch();
+
+    let cfg = settings::load();
+    spawn_idle_watcher(app, Duration::from_secs(cfg.auto_lock_seconds));
+    Ok(())
 }

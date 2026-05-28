@@ -1,7 +1,9 @@
+pub mod backup;
 pub mod clipboard;
 pub mod commands;
 pub mod crypto;
 pub mod error;
+pub mod keychain;
 pub mod paths;
 pub mod session;
 pub mod settings;
@@ -15,6 +17,7 @@ use session::AppState;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .manage(ClipboardState::default())
         .invoke_handler(tauri::generate_handler![
@@ -35,6 +38,13 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::generate_password,
+            commands::export_vault,
+            commands::import_vault,
+            commands::keychain_available,
+            commands::keychain_enable,
+            commands::keychain_disable,
+            commands::keychain_is_enabled,
+            commands::unlock_with_keychain,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

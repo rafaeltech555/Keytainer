@@ -345,3 +345,65 @@ button.danger {
   flex-shrink: 0;
   color: var(--muted);
 }
+
+/* Tag filter bar */
+.tag-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chip.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: transparent;
+}
+
+/* Settings screen */
+.settings-screen {
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.settings-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.row-toggle {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.row-toggle input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+}

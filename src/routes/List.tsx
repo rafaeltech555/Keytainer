@@ -5,19 +5,26 @@ import type { ItemSummary } from "../lib/types";
 interface Props {
   onSelect: (id: string | "new") => void;
   onLock: () => void;
+  onSettings: () => void;
   refreshKey: number;
 }
 
-export function List({ onSelect, onLock, refreshKey }: Props) {
+export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
   const [items, setItems] = useState<ItemSummary[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    ipc.listTags().then(setTags).catch(() => {});
+  }, [refreshKey]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    ipc.listItems(query)
+    ipc.listItems(query, activeTag ?? undefined)
       .then((items) => {
         if (!cancelled) setItems(items);
       })
@@ -30,7 +37,7 @@ export function List({ onSelect, onLock, refreshKey }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [query, refreshKey]);
+  }, [query, activeTag, refreshKey]);
 
   async function handleLock() {
     await ipc.lock();
@@ -43,9 +50,8 @@ export function List({ onSelect, onLock, refreshKey }: Props) {
         <h1>Keytainer</h1>
         <div className="header-actions">
           <button onClick={() => onSelect("new")}>＋ 新增</button>
-          <button className="secondary" onClick={handleLock}>
-            🔒 鎖定
-          </button>
+          <button className="secondary" onClick={onSettings}>⚙</button>
+          <button className="secondary" onClick={handleLock}>🔒 鎖定</button>
         </div>
       </header>
 
@@ -56,6 +62,28 @@ export function List({ onSelect, onLock, refreshKey }: Props) {
         onChange={(e) => setQuery(e.target.value)}
       />
 
+      {tags.length > 0 && (
+        <div className="tag-bar">
+          <button
+            type="button"
+            className={`chip ${activeTag === null ? "active" : ""}`}
+            onClick={() => setActiveTag(null)}
+          >
+            全部
+          </button>
+          {tags.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`chip ${activeTag === t ? "active" : ""}`}
+              onClick={() => setActiveTag(activeTag === t ? null : t)}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
       {error && <div className="error">{error}</div>}
 
       {loading ? (
@@ -63,7 +91,9 @@ export function List({ onSelect, onLock, refreshKey }: Props) {
       ) : items.length === 0 ? (
         <div className="empty">
           <p className="muted">
-            {query ? `沒有符合「${query}」的項目` : "還沒有任何項目，點右上「新增」開始"}
+            {query || activeTag
+              ? "沒有符合的項目"
+              : "還沒有任何項目，點右上「新增」開始"}
           </p>
         </div>
       ) : (

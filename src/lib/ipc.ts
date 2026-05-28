@@ -13,8 +13,11 @@ export const ipc = {
 
   lock: () => invoke<void>("lock"),
 
-  listItems: (query?: string) =>
-    invoke<ItemSummary[]>("list_items", { query: query ?? null }),
+  listItems: (query?: string, tag?: string) =>
+    invoke<ItemSummary[]>("list_items", {
+      query: query ?? null,
+      tag: tag ?? null,
+    }),
 
   listTags: () => invoke<string[]>("list_tags"),
 
@@ -40,4 +43,16 @@ export const ipc = {
 
   generatePassword: (length: number, includeSymbols: boolean) =>
     invoke<string>("generate_password", { length, includeSymbols }),
+
+  exportVault: (path: string, password: string) =>
+    invoke<void>("export_vault", { path, password }),
+
+  importVault: (path: string, password: string) =>
+    invoke<{ added: number; updated: number }>("import_vault", { path, password }),
+
+  keychainAvailable: () => invoke<boolean>("keychain_available"),
+  keychainIsEnabled: () => invoke<boolean>("keychain_is_enabled"),
+  keychainEnable: () => invoke<void>("keychain_enable"),
+  keychainDisable: () => invoke<void>("keychain_disable"),
+  unlockWithKeychain: () => invoke<void>("unlock_with_keychain"),
 };
