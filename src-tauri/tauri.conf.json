@@ -26,12 +26,33 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Rafael (rafaeltech555)",
+    "shortDescription": "Local-only password manager",
+    "longDescription": "Keytainer stores site name, account, password, and 2FA secrets in a single AES-256-GCM encrypted file on your machine. No cloud, no account.",
+    "category": "Utility",
+    "copyright": "© 2026 Rafael",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libayatana-appindicator3-1"
+        ]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "wix": {
+        "language": ["en-US"]
+      }
+    }
   }
 }
