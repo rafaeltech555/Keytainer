@@ -2,6 +2,8 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use zeroize::Zeroize;
+
 use crate::crypto::{self, KdfParams, KEY_LEN, NONCE_LEN, SALT_LEN};
 use crate::error::{AppError, AppResult};
 use crate::vault::Vault;
@@ -85,9 +87,10 @@ pub fn decode(bytes: &[u8]) -> AppResult<EncryptedFile> {
 /// Encrypt and atomically write a vault to `path`. Uses tmp + rename
 /// so a crash mid-write never destroys the previous good file.
 pub fn save(path: &Path, vault: &Vault, key: &[u8; KEY_LEN], kdf: KdfParams, salt: [u8; SALT_LEN]) -> AppResult<()> {
-    let plaintext = serde_json::to_vec(vault)?;
+    let mut plaintext = serde_json::to_vec(vault)?;
     let nonce = crypto::aead::random_nonce();
     let ciphertext = crypto::encrypt(key, &nonce, &plaintext)?;
+    plaintext.zeroize();
 
     let encoded = encode(&EncryptedFile {
         kdf,
@@ -106,8 +109,9 @@ pub fn load(path: &Path, password: &str) -> AppResult<(Vault, [u8; KEY_LEN], Kdf
     let bytes = fs::read(path)?;
     let file = decode(&bytes)?;
     let key = crypto::derive_key(password, &file.salt, file.kdf)?;
-    let plaintext = crypto::decrypt(&key, &file.nonce, &file.ciphertext)?;
+    let mut plaintext = crypto::decrypt(&key, &file.nonce, &file.ciphertext)?;
     let vault: Vault = serde_json::from_slice(&plaintext).map_err(|_| AppError::VaultCorrupt)?;
+    plaintext.zeroize();
     Ok((vault, key, file.kdf, file.salt))
 }
 
@@ -130,6 +134,17 @@ fn write_atomic(target: &Path, bytes: &[u8]) -> AppResult<()> {
         f.sync_all()?;
     }
     fs::rename(&tmp, target)?;
+    // fsync the parent directory so the rename is durable across power loss.
+    // Best-effort on Unix; Windows has no portable equivalent (NTFS journals
+    // the rename itself), so we skip it there.
+    #[cfg(unix)]
+    {
+        if let Some(parent) = target.parent() {
+            if let Ok(dir) = fs::File::open(parent) {
+                let _ = dir.sync_all();
+            }
+        }
+    }
     Ok(())
 }
 

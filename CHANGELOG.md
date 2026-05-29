@@ -3,6 +3,22 @@
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+- Master password now flows through the IPC layer as `secrecy::SecretString`
+  (zeroed on drop) instead of a plain `String` — the password buffer no
+  longer lingers in heap after unlock.
+- `Vault`, `VaultItem`, `TotpEntry`, and `ItemInput` derive
+  `zeroize::ZeroizeOnDrop`, so decrypted credentials in memory are wiped
+  when the session locks or items are freed.
+- Intermediate `serde_json` plaintext buffers in `vault::store::save` /
+  `load` and `backup::export_to_file` / `import_from_file` are explicitly
+  zeroized after use; backup KDF keys are zeroized after encryption.
+- Atomic vault writes now `fsync` the parent directory after rename
+  (Unix), making the rename durable across power loss on filesystems
+  with deferred journal commits.
+
 ## [0.1.0] — 2026-05-28
 
 First packaged release.

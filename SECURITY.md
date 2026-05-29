@@ -32,6 +32,8 @@ an upstream Tauri / dependency release), I'll say so and keep you updated.
 
 - Cryptographic weaknesses in the vault format, KDF, or AEAD usage
 - Memory-handling bugs that leak secrets after lock or process exit
+  (master password, decrypted vault items, and intermediate plaintext
+  buffers are wrapped in `zeroize`-on-drop types — bypasses are in scope)
 - Logic bugs that allow reading items without the correct master password
   or cached key
 - Issues that break the integrity of the encrypted backup format

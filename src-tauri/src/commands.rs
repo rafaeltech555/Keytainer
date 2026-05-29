@@ -1,9 +1,11 @@
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 use uuid::Uuid;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::backup;
 use crate::clipboard::ClipboardState;
@@ -41,9 +43,10 @@ impl From<&VaultItem> for ItemSummary {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct ItemInput {
     #[serde(default)]
+    #[zeroize(skip)]
     pub id: Option<Uuid>,
     pub site_name: String,
     pub username: String,
@@ -59,16 +62,18 @@ pub struct ItemInput {
 }
 
 impl ItemInput {
-    fn into_vault_item(self) -> VaultItem {
+    /// Move fields out of `self` via `mem::take` so the `ZeroizeOnDrop`
+    /// `Drop` impl can still run on the (now-empty) shell.
+    fn into_vault_item(mut self) -> VaultItem {
         VaultItem {
-            id: self.id.unwrap_or(Uuid::nil()),
-            site_name: self.site_name,
-            username: self.username,
-            password: self.password,
-            totp: self.totp,
-            url: self.url,
-            notes: self.notes,
-            tags: self.tags,
+            id: self.id.take().unwrap_or(Uuid::nil()),
+            site_name: std::mem::take(&mut self.site_name),
+            username: std::mem::take(&mut self.username),
+            password: std::mem::take(&mut self.password),
+            totp: self.totp.take(),
+            url: self.url.take(),
+            notes: self.notes.take(),
+            tags: std::mem::take(&mut self.tags),
             created_at: 0,
             updated_at: 0,
         }
@@ -100,8 +105,8 @@ pub fn is_unlocked(state: State<'_, AppState>) -> bool {
 }
 
 #[tauri::command]
-pub fn create_vault(password: String, state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
-    if password.is_empty() {
+pub fn create_vault(password: SecretString, state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
+    if password.expose_secret().is_empty() {
         return Err(AppError::Crypto("password must not be empty".into()));
     }
     let path = paths::vault_path()?;
@@ -111,7 +116,7 @@ pub fn create_vault(password: String, state: State<'_, AppState>, app: AppHandle
 
     let kdf = KdfParams::default();
     let salt = crypto::kdf::random_salt();
-    let key = crypto::derive_key(&password, &salt, kdf)?;
+    let key = crypto::derive_key(password.expose_secret(), &salt, kdf)?;
 
     let vault = Vault::default();
     vault::store::save(&path, &vault, &key, kdf, salt)?;
@@ -130,12 +135,12 @@ pub fn create_vault(password: String, state: State<'_, AppState>, app: AppHandle
 }
 
 #[tauri::command]
-pub fn unlock(password: String, state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
+pub fn unlock(password: SecretString, state: State<'_, AppState>, app: AppHandle) -> AppResult<()> {
     let path = paths::vault_path()?;
     if !path.exists() {
         return Err(AppError::NotInitialised);
     }
-    let (vault, key, kdf, salt) = vault::store::load(&path, &password)?;
+    let (vault, key, kdf, salt) = vault::store::load(&path, password.expose_secret())?;
     *state.session.lock().map_err(|_| AppError::Locked)? = Some(UnlockedSession {
         vault,
         key,
@@ -313,13 +318,15 @@ pub fn generate_password(length: usize, include_symbols: bool) -> String {
 #[tauri::command]
 pub fn export_vault(
     path: String,
-    password: String,
+    password: SecretString,
     state: State<'_, AppState>,
 ) -> AppResult<()> {
-    if password.is_empty() {
+    if password.expose_secret().is_empty() {
         return Err(AppError::Crypto("backup password must not be empty".into()));
     }
-    state.with_session(|s| backup::export_to_file(&PathBuf::from(&path), &s.vault, &password))
+    state.with_session(|s| {
+        backup::export_to_file(&PathBuf::from(&path), &s.vault, password.expose_secret())
+    })
 }
 
 #[derive(Debug, Serialize)]
@@ -334,15 +341,18 @@ pub struct ImportReport {
 #[tauri::command]
 pub fn import_vault(
     path: String,
-    password: String,
+    password: SecretString,
     state: State<'_, AppState>,
 ) -> AppResult<ImportReport> {
-    let imported = backup::import_from_file(&PathBuf::from(&path), &password)?;
+    let mut imported = backup::import_from_file(&PathBuf::from(&path), password.expose_secret())?;
     let save_path = paths::vault_path()?;
     state.with_session(|s| {
         let mut added = 0usize;
         let mut updated = 0usize;
-        for item in imported.items {
+        // `mem::take` moves fields out of `imported` without violating its
+        // `Drop` impl (added by `ZeroizeOnDrop`). The emptied `imported`
+        // still zeroizes on drop.
+        for item in std::mem::take(&mut imported.items) {
             match s.vault.items.iter_mut().find(|i| i.id == item.id) {
                 Some(existing) => {
                     *existing = item;
@@ -354,7 +364,7 @@ pub fn import_vault(
                 }
             }
         }
-        for t in imported.tags {
+        for t in std::mem::take(&mut imported.tags) {
             if !s.vault.tags.iter().any(|x| x.eq_ignore_ascii_case(&t)) {
                 s.vault.tags.push(t);
             }
@@ -404,9 +414,10 @@ pub fn unlock_with_keychain(state: State<'_, AppState>, app: AppHandle) -> AppRe
     // read the header, use the cached key against the same nonce/ciphertext.
     let bytes = std::fs::read(&path)?;
     let file = vault::store::decode(&bytes)?;
-    let plaintext = crypto::decrypt(&key, &file.nonce, &file.ciphertext)?;
+    let mut plaintext = crypto::decrypt(&key, &file.nonce, &file.ciphertext)?;
     let vault: Vault =
         serde_json::from_slice(&plaintext).map_err(|_| AppError::VaultCorrupt)?;
+    plaintext.zeroize();
 
     *state.session.lock().map_err(|_| AppError::Locked)? = Some(UnlockedSession {
         vault,
@@ -419,4 +430,18 @@ pub fn unlock_with_keychain(state: State<'_, AppState>, app: AppHandle) -> AppRe
     let cfg = settings::load();
     spawn_idle_watcher(app, Duration::from_secs(cfg.auto_lock_seconds));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use secrecy::{ExposeSecret, SecretString};
+
+    /// Tauri IPC sends `password` as a JSON string. Confirm `SecretString`
+    /// (with the `serde` feature on) deserializes from that without
+    /// special handling on the frontend.
+    #[test]
+    fn secret_string_deserializes_from_json_string() {
+        let s: SecretString = serde_json::from_str("\"hunter2\"").unwrap();
+        assert_eq!(s.expose_secret(), "hunter2");
+    }
 }

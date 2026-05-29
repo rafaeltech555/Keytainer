@@ -3,11 +3,13 @@ pub mod store;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub const SCHEMA_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct Vault {
+    #[zeroize(skip)]
     pub version: u32,
     pub items: Vec<VaultItem>,
     pub tags: Vec<String>,
@@ -23,8 +25,9 @@ impl Default for Vault {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct VaultItem {
+    #[zeroize(skip)]
     pub id: Uuid,
     pub site_name: String,
     pub username: String,
@@ -37,7 +40,9 @@ pub struct VaultItem {
     pub notes: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
+    #[zeroize(skip)]
     pub created_at: i64,
+    #[zeroize(skip)]
     pub updated_at: i64,
 }
 
@@ -55,12 +60,15 @@ impl Default for TotpAlg {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct TotpEntry {
     pub secret: String, // base32, no padding
     #[serde(default)]
+    #[zeroize(skip)]
     pub algorithm: TotpAlg,
+    #[zeroize(skip)]
     pub digits: u8,
+    #[zeroize(skip)]
     pub period: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub issuer: Option<String>,

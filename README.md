@@ -61,6 +61,8 @@ See [CHANGELOG.md](CHANGELOG.md) for what landed in each version.
 
 Protects the vault against an attacker who can read `vault.dat` from disk (lost laptop, stolen backup) **as long as your master password is strong**. **Does not** protect against malware already running as your user account.
 
+Decrypted credentials and the master password are wrapped in `zeroize`-on-drop types, so they're wiped from heap as soon as the session locks. This is best-effort hygiene, not a defence — if your machine is swapping or an attacker has live root, those pages can still leak.
+
 Vault file location:
 - Linux: `~/.config/keytainer/vault.dat`
 - macOS: `~/Library/Application Support/com.rafaeltech555.keytainer/vault.dat`

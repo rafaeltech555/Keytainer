@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::crypto::{self, KdfParams, NONCE_LEN, SALT_LEN};
 use crate::error::{AppError, AppResult};
@@ -88,10 +89,12 @@ pub fn b64_decode(s: &str) -> AppResult<Vec<u8>> {
 pub fn export_to_file(path: &Path, vault: &Vault, password: &str) -> AppResult<()> {
     let kdf = KdfParams::default();
     let salt = crypto::kdf::random_salt();
-    let key = crypto::derive_key(password, &salt, kdf)?;
+    let mut key = crypto::derive_key(password, &salt, kdf)?;
     let nonce = crypto::aead::random_nonce();
-    let plaintext = serde_json::to_vec(vault)?;
+    let mut plaintext = serde_json::to_vec(vault)?;
     let ciphertext = crypto::encrypt(&key, &nonce, &plaintext)?;
+    plaintext.zeroize();
+    key.zeroize();
 
     let backup = Backup {
         format: FORMAT_TAG.into(),
@@ -140,9 +143,12 @@ pub fn import_from_file(path: &Path, password: &str) -> AppResult<Vault> {
         t_cost: backup.kdf.t_cost,
         p_cost: backup.kdf.p_cost,
     };
-    let key = crypto::derive_key(password, &salt, kdf)?;
-    let plaintext = crypto::decrypt(&key, &nonce, &ct)?;
-    serde_json::from_slice(&plaintext).map_err(|_| AppError::VaultCorrupt)
+    let mut key = crypto::derive_key(password, &salt, kdf)?;
+    let mut plaintext = crypto::decrypt(&key, &nonce, &ct)?;
+    let vault: Result<Vault, _> = serde_json::from_slice(&plaintext);
+    plaintext.zeroize();
+    key.zeroize();
+    vault.map_err(|_| AppError::VaultCorrupt)
 }
 
 #[cfg(test)]
