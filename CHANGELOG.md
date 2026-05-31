@@ -5,6 +5,44 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-31
+
+### Security
+- **Vault format v2.** Vaults are now encrypted with XChaCha20-Poly1305
+  (192-bit random nonce) instead of AES-256-GCM, eliminating the practical
+  nonce-reuse birthday bound under a long-lived session key. The file
+  header (format version, Argon2 params, salt, nonce) is now bound as
+  AEAD associated data, so tampering with KDF params is detected instead
+  of being a silent downgrade vector. Same hardening applied to the
+  encrypted backup envelope (`keytainer-backup-v2`).
+- **Transparent migration.** Existing v1 (AES-GCM) vaults and `…-v1`
+  backups still open; a v1 vault is rewritten as v2 on the next save. No
+  user action and no data loss.
+- Strict Content-Security-Policy replaces the previous `null` CSP.
+- The OS-keychain quick-unlock now carries an explicit in-app warning that
+  it stores the raw vault key in the OS secret store.
+- TOTP dynamic truncation guards against a short HMAC (no panic path).
+- The password generator scrubs its working buffer after use.
+
+### Added
+- **Change master password** from Settings — re-derives the key with a
+  fresh salt, re-encrypts the vault, and refreshes the keychain entry if
+  quick-unlock is on.
+- **In-app updater.** `tauri-plugin-updater` + `tauri-plugin-process` are
+  now wired up; Settings has a "check for updates" action that verifies
+  the signed `latest.json`/`.sig` against the embedded public key and can
+  download, install, and relaunch.
+- **English / 繁體中文 language switch.** UI language follows the OS locale
+  by default and can be overridden in Settings; the choice is persisted.
+
+### Fixed
+- Idle auto-lock no longer fires mid-edit: raw UI activity (typing,
+  pointer) now refreshes the idle timer via a throttled activity ping,
+  not only backend IPC calls.
+
+### Changed
+- Replaced the hand-rolled base64 codec with the `base64` crate.
+
 ## [0.1.2] — 2026-05-31
 
 ### Fixed
@@ -67,6 +105,7 @@ First packaged release.
   and SmartScreen will warn on first launch. See the README for the
   one-time bypass.
 
+[0.2.0]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.2.0
 [0.1.2]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.2
 [0.1.1]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.1
 [0.1.0]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.0

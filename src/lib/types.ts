@@ -80,4 +80,6 @@ export interface Settings {
   auto_lock_seconds: number;
   clipboard_clear_seconds: number;
   show_totp_code: boolean;
+  /** "system" (follow OS), "en", or "zh-TW". */
+  locale: string;
 }

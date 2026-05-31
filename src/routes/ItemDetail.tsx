@@ -3,6 +3,7 @@ import { ipc } from "../lib/ipc";
 import type { ItemInput, VaultItem, TotpEntry, TotpAlg } from "../lib/types";
 import { isAppError } from "../lib/types";
 import { TotpDisplay } from "../components/TotpDisplay";
+import { useT, type TKey } from "../lib/i18n";
 
 interface Props {
   itemId: string | "new";
@@ -25,6 +26,7 @@ function defaultTotp(): TotpEntry {
 }
 
 export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
+  const t = useT();
   const isNew = itemId === "new";
   const [form, setForm] = useState<ItemInput>(empty);
   const [tagsInput, setTagsInput] = useState("");
@@ -129,7 +131,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
 
   async function remove() {
     if (isNew) return;
-    if (!confirm("確定要刪除這個項目嗎？")) return;
+    if (!confirm(t("detail_confirm_delete"))) return;
     setBusy(true);
     try {
       await ipc.deleteItem(itemId as string);
@@ -142,16 +144,16 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
 
   const hasTotp = form.totp !== null && form.totp !== undefined;
 
-  if (loading) return <div className="screen centered"><p>載入中…</p></div>;
+  if (loading) return <div className="screen centered"><p>{t("loading")}</p></div>;
 
   return (
     <div className="screen detail-screen">
       <header className="detail-header">
-        <button className="secondary" onClick={onClose}>← 返回</button>
-        <h2>{isNew ? "新增項目" : form.site_name || "(未命名)"}</h2>
+        <button className="secondary" onClick={onClose}>{t("back")}</button>
+        <h2>{isNew ? t("detail_new") : form.site_name || t("list_unnamed")}</h2>
         {!isNew && (
           <button className="danger" onClick={remove} disabled={busy}>
-            刪除
+            {t("delete")}
           </button>
         )}
       </header>
@@ -160,7 +162,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
       {savedItemId && (
         <div className="quick-actions">
           <button type="button" onClick={copyPassword}>
-            {pwCopied ? "已複製密碼 ✓" : "複製密碼"}
+            {pwCopied ? t("detail_copied_pw") : t("detail_copy_pw")}
           </button>
           {hasTotp && (
             <TotpDisplay itemId={savedItemId} showCode={showTotpCode} />
@@ -170,7 +172,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
 
       <form onSubmit={save} className="detail-form">
         <label>
-          網站名稱
+          {t("detail_site")}
           <input
             value={form.site_name}
             onChange={(e) => patch("site_name", e.target.value)}
@@ -180,7 +182,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
         </label>
 
         <label>
-          帳號
+          {t("detail_username")}
           <input
             value={form.username}
             onChange={(e) => patch("username", e.target.value)}
@@ -188,7 +190,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
         </label>
 
         <label>
-          密碼
+          {t("detail_password")}
           <div className="pw-row">
             <input
               type={showPw ? "text" : "password"}
@@ -196,14 +198,14 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
               onChange={(e) => patch("password", e.target.value)}
             />
             <button type="button" onClick={() => setShowPw((s) => !s)}>
-              {showPw ? "隱藏" : "顯示"}
+              {showPw ? t("detail_hide") : t("detail_show")}
             </button>
-            <button type="button" onClick={generate}>產生</button>
+            <button type="button" onClick={generate}>{t("detail_generate")}</button>
           </div>
         </label>
 
         <label>
-          網址（選填）
+          {t("detail_url")}
           <input
             type="url"
             value={form.url ?? ""}
@@ -212,7 +214,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
         </label>
 
         <fieldset className="totp-block">
-          <legend>2FA</legend>
+          <legend>{t("detail_2fa")}</legend>
           {hasTotp ? (
             <TotpFields
               totp={form.totp!}
@@ -224,22 +226,22 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
               type="button"
               onClick={() => patch("totp", defaultTotp())}
             >
-              加入 2FA（TOTP secret）
+              {t("detail_add_2fa")}
             </button>
           )}
         </fieldset>
 
         <label>
-          標籤（用逗號分隔）
+          {t("detail_tags")}
           <input
             value={tagsInput}
             onChange={(e) => commitTags(e.target.value)}
-            placeholder="例如：工作, 財務"
+            placeholder={t("detail_tags_ph")}
           />
         </label>
 
         <label>
-          備註
+          {t("detail_notes")}
           <textarea
             value={form.notes ?? ""}
             onChange={(e) => patch("notes", e.target.value)}
@@ -251,10 +253,10 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
 
         <div className="form-actions">
           <button type="submit" disabled={busy || !form.site_name}>
-            {busy ? "儲存中…" : "儲存"}
+            {busy ? t("detail_saving") : t("save")}
           </button>
           <button type="button" className="secondary" onClick={onClose}>
-            取消
+            {t("cancel")}
           </button>
         </div>
       </form>
@@ -269,13 +271,14 @@ interface TotpFieldsProps {
 }
 
 function TotpFields({ totp, onChange, onRemove }: TotpFieldsProps) {
+  const t = useT();
   function patch<K extends keyof TotpEntry>(key: K, value: TotpEntry[K]) {
     onChange({ ...totp, [key]: value });
   }
   return (
     <div className="totp-fields">
       <label>
-        Secret（base32）
+        {t("totp_secret" as TKey)}
         <input
           value={totp.secret}
           onChange={(e) => patch("secret", e.target.value)}
@@ -285,7 +288,7 @@ function TotpFields({ totp, onChange, onRemove }: TotpFieldsProps) {
       </label>
       <div className="totp-row">
         <label>
-          演算法
+          {t("totp_algorithm")}
           <select
             value={totp.algorithm}
             onChange={(e) => patch("algorithm", e.target.value as TotpAlg)}
@@ -296,7 +299,7 @@ function TotpFields({ totp, onChange, onRemove }: TotpFieldsProps) {
           </select>
         </label>
         <label>
-          位數
+          {t("totp_digits")}
           <input
             type="number"
             min={6}
@@ -306,7 +309,7 @@ function TotpFields({ totp, onChange, onRemove }: TotpFieldsProps) {
           />
         </label>
         <label>
-          週期（秒）
+          {t("totp_period")}
           <input
             type="number"
             min={15}
@@ -317,7 +320,7 @@ function TotpFields({ totp, onChange, onRemove }: TotpFieldsProps) {
         </label>
       </div>
       <button type="button" className="secondary" onClick={onRemove}>
-        移除 2FA
+        {t("totp_remove")}
       </button>
     </div>
   );

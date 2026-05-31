@@ -159,6 +159,64 @@ pub fn lock(state: State<'_, AppState>) {
     state.lock_now();
 }
 
+/// Reset the idle auto-lock timer. The frontend calls this on user activity
+/// that doesn't otherwise hit the backend (e.g. typing in a form), so a user
+/// editing an entry for a while isn't locked out mid-edit. No-op when locked.
+#[tauri::command]
+pub fn ping_activity(state: State<'_, AppState>) {
+    if state.is_unlocked() {
+        state.touch();
+    }
+}
+
+/// Best-effort OS UI language (e.g. "en-US", "zh-TW"). The frontend maps this
+/// to a supported locale when the user's preference is "system".
+#[tauri::command]
+pub fn get_system_locale() -> String {
+    sys_locale::get_locale().unwrap_or_else(|| "en".into())
+}
+
+/// Change the master password: verify the current one, derive a fresh key
+/// from the new password (new salt + current default KDF params), re-encrypt
+/// the whole vault, and update the in-memory session. If keychain fast-unlock
+/// is enabled, the stored key is refreshed too.
+#[tauri::command]
+pub fn change_password(
+    current: SecretString,
+    new: SecretString,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
+    if new.expose_secret().is_empty() {
+        return Err(AppError::Crypto("new password must not be empty".into()));
+    }
+    let path = paths::vault_path()?;
+    state.with_session(|s| {
+        // Authorize: the supplied current password must derive the live key.
+        let mut check = crypto::derive_key(current.expose_secret(), &s.salt, s.kdf)?;
+        let ok = check == s.key;
+        check.zeroize();
+        if !ok {
+            return Err(AppError::WrongPassword);
+        }
+
+        let new_kdf = KdfParams::default();
+        let new_salt = crypto::kdf::random_salt();
+        let mut new_key = crypto::derive_key(new.expose_secret(), &new_salt, new_kdf)?;
+
+        vault::store::save(&path, &s.vault, &new_key, new_kdf, new_salt)?;
+        s.key = new_key;
+        s.salt = new_salt;
+        s.kdf = new_kdf;
+        new_key.zeroize();
+
+        // Keep keychain fast-unlock working after a rotation.
+        if keychain::load_key().is_ok() {
+            let _ = keychain::store_key(&s.key);
+        }
+        Ok(())
+    })
+}
+
 #[tauri::command]
 pub fn list_items(
     query: Option<String>,
@@ -308,9 +366,13 @@ pub fn generate_password(length: usize, include_symbols: bool) -> String {
         alphabet.extend_from_slice(b"!@#$%^&*()-_=+[]{};:,.?/");
     }
     let mut rng = rand::thread_rng();
-    (0..length)
+    let pw: String = (0..length)
         .map(|_| *alphabet.choose(&mut rng).expect("alphabet is non-empty") as char)
-        .collect()
+        .collect();
+    // Best-effort: scrub the working alphabet. The returned String necessarily
+    // crosses the IPC boundary into JS-managed memory, which we can't zeroize.
+    alphabet.zeroize();
+    pw
 }
 
 // ──────────────────────────── Backup / Restore ────────────────────────────
@@ -409,21 +471,14 @@ pub fn unlock_with_keychain(state: State<'_, AppState>, app: AppHandle) -> AppRe
         return Err(AppError::NotInitialised);
     }
     let key = keychain::load_key()?;
-
-    // Re-implement enough of vault::store::load to bypass the password KDF:
-    // read the header, use the cached key against the same nonce/ciphertext.
-    let bytes = std::fs::read(&path)?;
-    let file = vault::store::decode(&bytes)?;
-    let mut plaintext = crypto::decrypt(&key, &file.nonce, &file.ciphertext)?;
-    let vault: Vault =
-        serde_json::from_slice(&plaintext).map_err(|_| AppError::VaultCorrupt)?;
-    plaintext.zeroize();
+    // Bypass the password KDF: decrypt with the cached key (handles v1 + v2).
+    let (vault, kdf, salt) = vault::store::load_with_key(&path, &key)?;
 
     *state.session.lock().map_err(|_| AppError::Locked)? = Some(UnlockedSession {
         vault,
         key,
-        salt: file.salt,
-        kdf: file.kdf,
+        salt,
+        kdf,
     });
     state.touch();
 

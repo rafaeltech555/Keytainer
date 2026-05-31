@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ipc } from "../lib/ipc";
 import type { ItemSummary } from "../lib/types";
+import { useT } from "../lib/i18n";
 
 interface Props {
   onSelect: (id: string | "new") => void;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
+  const t = useT();
   const [items, setItems] = useState<ItemSummary[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -49,15 +51,15 @@ export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
       <header className="list-header">
         <h1>Keytainer</h1>
         <div className="header-actions">
-          <button onClick={() => onSelect("new")}>＋ 新增</button>
+          <button onClick={() => onSelect("new")}>{t("list_add")}</button>
           <button className="secondary" onClick={onSettings}>⚙</button>
-          <button className="secondary" onClick={handleLock}>🔒 鎖定</button>
+          <button className="secondary" onClick={handleLock}>{t("list_lock")}</button>
         </div>
       </header>
 
       <input
         className="search"
-        placeholder="搜尋網站、帳號、標籤…"
+        placeholder={t("list_search")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -69,7 +71,7 @@ export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
             className={`chip ${activeTag === null ? "active" : ""}`}
             onClick={() => setActiveTag(null)}
           >
-            全部
+            {t("list_all")}
           </button>
           {tags.map((t) => (
             <button
@@ -87,13 +89,11 @@ export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
       {error && <div className="error">{error}</div>}
 
       {loading ? (
-        <p className="muted">載入中…</p>
+        <p className="muted">{t("loading")}</p>
       ) : items.length === 0 ? (
         <div className="empty">
           <p className="muted">
-            {query || activeTag
-              ? "沒有符合的項目"
-              : "還沒有任何項目，點右上「新增」開始"}
+            {query || activeTag ? t("list_no_match") : t("list_empty")}
           </p>
         </div>
       ) : (
@@ -102,7 +102,7 @@ export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
             <li key={it.id}>
               <button className="row" onClick={() => onSelect(it.id)}>
                 <div className="row-main">
-                  <div className="row-title">{it.site_name || "(未命名)"}</div>
+                  <div className="row-title">{it.site_name || t("list_unnamed")}</div>
                   <div className="row-sub">{it.username}</div>
                 </div>
                 <div className="row-side">

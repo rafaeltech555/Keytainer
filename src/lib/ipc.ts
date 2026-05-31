@@ -13,6 +13,13 @@ export const ipc = {
 
   lock: () => invoke<void>("lock"),
 
+  pingActivity: () => invoke<void>("ping_activity"),
+
+  getSystemLocale: () => invoke<string>("get_system_locale"),
+
+  changePassword: (current: string, newPassword: string) =>
+    invoke<void>("change_password", { current, new: newPassword }),
+
   listItems: (query?: string, tag?: string) =>
     invoke<ItemSummary[]>("list_items", {
       query: query ?? null,

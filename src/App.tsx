@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Setup } from "./routes/Setup";
 import { Unlock } from "./routes/Unlock";
@@ -6,6 +6,7 @@ import { List } from "./routes/List";
 import { ItemDetail } from "./routes/ItemDetail";
 import { Settings } from "./routes/Settings";
 import { ipc } from "./lib/ipc";
+import { I18nProvider, useT } from "./lib/i18n";
 import "./App.css";
 
 type Screen =
@@ -16,14 +17,17 @@ type Screen =
   | { kind: "detail"; itemId: string | "new" }
   | { kind: "settings" };
 
-export default function App() {
+function AppInner() {
+  const t = useT();
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
   const [refreshKey, setRefreshKey] = useState(0);
+  const unlocked = useRef(false);
 
   useEffect(() => {
     void boot();
 
     const unlistenPromise = listen<string>("vault-locked", (event) => {
+      unlocked.current = false;
       setScreen({
         kind: "unlock",
         reason: event.payload === "idle" ? "idle" : "manual",
@@ -35,14 +39,37 @@ export default function App() {
     };
   }, []);
 
+  // Keep the idle auto-lock timer alive on raw user interaction, not just on
+  // IPC calls — otherwise a user typing in a form for a while gets locked out
+  // mid-edit. Throttled to at most one ping every 20s. Only while unlocked.
+  useEffect(() => {
+    let last = 0;
+    const onActivity = () => {
+      if (!unlocked.current) return;
+      const now = Date.now();
+      if (now - last < 20_000) return;
+      last = now;
+      void ipc.pingActivity().catch(() => {});
+    };
+    const events: (keyof WindowEventMap)[] = ["keydown", "pointerdown", "pointermove"];
+    events.forEach((e) => window.addEventListener(e, onActivity, { passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, onActivity));
+  }, []);
+
   async function boot() {
     const exists = await ipc.vaultExists();
     if (!exists) {
       setScreen({ kind: "setup" });
       return;
     }
-    const unlocked = await ipc.isUnlocked();
-    setScreen({ kind: unlocked ? "list" : "unlock" });
+    const isUnlocked = await ipc.isUnlocked();
+    unlocked.current = isUnlocked;
+    setScreen({ kind: isUnlocked ? "list" : "unlock" });
+  }
+
+  function enterUnlocked(next: Screen) {
+    unlocked.current = true;
+    setScreen(next);
   }
 
   function bumpList() {
@@ -51,16 +78,16 @@ export default function App() {
 
   switch (screen.kind) {
     case "loading":
-      return <div className="screen centered"><p>載入中…</p></div>;
+      return <div className="screen centered"><p>{t("loading")}</p></div>;
 
     case "setup":
-      return <Setup onCreated={() => setScreen({ kind: "list" })} />;
+      return <Setup onCreated={() => enterUnlocked({ kind: "list" })} />;
 
     case "unlock":
       return (
         <Unlock
           reason={screen.reason}
-          onUnlocked={() => setScreen({ kind: "list" })}
+          onUnlocked={() => enterUnlocked({ kind: "list" })}
         />
       );
 
@@ -69,7 +96,10 @@ export default function App() {
         <List
           refreshKey={refreshKey}
           onSelect={(id) => setScreen({ kind: "detail", itemId: id })}
-          onLock={() => setScreen({ kind: "unlock", reason: "manual" })}
+          onLock={() => {
+            unlocked.current = false;
+            setScreen({ kind: "unlock", reason: "manual" });
+          }}
           onSettings={() => setScreen({ kind: "settings" })}
         />
       );
@@ -100,4 +130,12 @@ export default function App() {
         />
       );
   }
+}
+
+export default function App() {
+  return (
+    <I18nProvider>
+      <AppInner />
+    </I18nProvider>
+  );
 }
