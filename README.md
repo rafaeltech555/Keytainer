@@ -107,7 +107,7 @@ pnpm tauri build
 # → src-tauri/target/release/bundle/{deb,rpm,appimage,...}/
 ```
 
-Run the Rust test suite (33 tests):
+Run the Rust test suite (45 tests):
 ```bash
 cd src-tauri && cargo test
 ```
@@ -120,6 +120,8 @@ git push origin v<x.y.z>
 ```
 
 `.github/workflows/release.yml` then builds for macOS (aarch64 + x86_64), Linux (x86_64), and Windows (x86_64) on native runners, and uploads the installers to a **draft** release on GitHub. Edit the draft, write notes (see prior releases for the template), then publish.
+
+> **Heads-up:** the four matrix jobs race and `tauri-action` can create *two* draft releases for the same tag, each holding only the platforms it built — and each with a `latest.json` covering only its half. Before publishing, merge them into one release with a combined `latest.json` (union of both `platforms` maps), or the in-app updater will fail for the platforms missing from whichever `latest.json` is served.
 
 Each artifact is signed with the Tauri updater (minisign) key — CI secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, public key embedded in `tauri.conf.json` — so every bundle ships a detached `.sig` and the release publishes a `latest.json`. The in-app updater (Settings → Updates) checks `latest.json` and verifies the signature against the embedded public key before installing. Note: this signs update *payloads*; it is **not** OS code signing, so macOS/Windows still warn on first launch.
 
