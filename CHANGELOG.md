@@ -5,6 +5,16 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-05-31
+
+### Fixed
+- The updater public key embedded in the app now matches the private key
+  used to sign release artifacts. (The key first wired up for 0.1.1 was
+  mismatched, so a future in-app auto-updater could not have verified
+  0.1.1 downloads.)
+- `package.json` and the Rust crate version now track the release version
+  (0.1.1 only bumped `tauri.conf.json`).
+
 ## [0.1.1] — 2026-05-31
 
 ### Added
@@ -57,5 +67,6 @@ First packaged release.
   and SmartScreen will warn on first launch. See the README for the
   one-time bypass.
 
+[0.1.2]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.2
 [0.1.1]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.1
 [0.1.0]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.0
