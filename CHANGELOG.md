@@ -5,6 +5,15 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-31
+
+### Added
+- Release artifacts are now signed with a Tauri updater key. Each bundle
+  ships a detached `.sig` and the release publishes a `latest.json`, so a
+  future in-app auto-updater can verify downloads against the embedded
+  public key. (Does not affect OS code signing — macOS/Windows binaries
+  remain unsigned for now.)
+
 ### Security
 - Master password now flows through the IPC layer as `secrecy::SecretString`
   (zeroed on drop) instead of a plain `String` — the password buffer no
@@ -48,4 +57,5 @@ First packaged release.
   and SmartScreen will warn on first launch. See the README for the
   one-time bypass.
 
+[0.1.1]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.1
 [0.1.0]: https://github.com/rafaeltech555/Keytainer/releases/tag/v0.1.0
