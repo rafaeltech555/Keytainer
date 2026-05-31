@@ -58,7 +58,8 @@ SmartScreen will show "Windows protected your PC". Click **More info → Run any
 - **English / 繁體中文** — follows your OS locale, switchable in Settings
 - **Signed in-app updates** — checks the signed `latest.json`, verifies against the embedded key, installs and relaunches
 
-See [CHANGELOG.md](CHANGELOG.md) for what landed in each version.
+See [CHANGELOG.md](CHANGELOG.md) for what landed in each version, and
+[ROADMAP.md](ROADMAP.md) for where the project is and what's next.
 
 ## Threat model
 
