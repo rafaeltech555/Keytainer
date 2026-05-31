@@ -1,6 +1,6 @@
 # Keytainer
 
-> A local-only password manager. Stores site name, account, password, and 2FA secrets in a single AES-256-GCM encrypted file on your machine. No cloud, no account.
+> A local-only password manager. Stores site name, account, password, and 2FA secrets in a single XChaCha20-Poly1305 encrypted file on your machine. No cloud, no account.
 
 [![Release](https://img.shields.io/github/v/release/rafaeltech555/Keytainer?include_prereleases&sort=semver)](https://github.com/rafaeltech555/Keytainer/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -46,14 +46,17 @@ SmartScreen will show "Windows protected your PC". Click **More info → Run any
 
 ## Features
 
-- **Master password** — Argon2id KDF (OWASP 2024 params) → AES-256-GCM AEAD
+- **Master password** — Argon2id KDF (OWASP 2024 params) → XChaCha20-Poly1305 AEAD, with the file header bound as associated data
+- **Change the master password** in-app — re-derives the key and re-encrypts the vault
 - **TOTP code generation** (RFC 6238, SHA-1 / SHA-256 / SHA-512) with live countdown
 - **Clipboard auto-clear** after 30 s (configurable, generation-counter-based so a newer copy supersedes an older scheduled clear)
-- **Auto-lock on idle** with `vault-locked` event back to the UI
+- **Auto-lock on idle** with `vault-locked` event back to the UI (UI activity keeps it alive, so you're not locked out mid-edit)
 - **Search + tag filter** across the vault
-- **Encrypted JSON backup** (`keytainer-backup-v1`) — non-destructive merge on import
+- **Encrypted backup** (`keytainer-backup-v2`) — non-destructive merge on import; older `-v1` backups still import
 - **Optional OS keychain quick-unlock** (Secret Service / Keychain / Credential Manager)
 - **Password generator** (length + symbols)
+- **English / 繁體中文** — follows your OS locale, switchable in Settings
+- **Signed in-app updates** — checks the signed `latest.json`, verifies against the embedded key, installs and relaunches
 
 See [CHANGELOG.md](CHANGELOG.md) for what landed in each version.
 
@@ -73,11 +76,11 @@ Security-issue reporting: see [SECURITY.md](SECURITY.md) — use GitHub's privat
 ## Vault file format
 
 ```
-"KTNR" | version u16 | argon2 params (12 B) | salt[16] | nonce[12] | ct_len u32 | ciphertext
+"KTNR" | version u16 | argon2 params (12 B) | salt[16] | nonce[N] | ct_len u32 | ciphertext
 ```
 
+- **v2** (current): `nonce` is 24 bytes and the payload is encrypted with XChaCha20-Poly1305; the entire header (magic … ct_len) is passed as AEAD associated data, so tampering with the stored Argon2 params is detected rather than silently honoured. **v1** (legacy): 12-byte nonce, AES-256-GCM, no AAD — still readable, and upgraded to v2 on the next save.
 - Argon2id params (m_cost_kib, t_cost, p_cost) are persisted in the file so we can re-derive the same key on load even if the global defaults later change
-- Ciphertext is the AES-256-GCM encryption of `serde_json::to_vec(&Vault)` — auth tag is appended by `aes-gcm`
 - Writes go via `vault.dat.tmp` → `fsync` → atomic `rename`, so a crash mid-write never destroys the previous good file
 
 ## Build from source
@@ -118,7 +121,7 @@ git push origin v<x.y.z>
 
 `.github/workflows/release.yml` then builds for macOS (aarch64 + x86_64), Linux (x86_64), and Windows (x86_64) on native runners, and uploads the installers to a **draft** release on GitHub. Edit the draft, write notes (see prior releases for the template), then publish.
 
-Each artifact is signed with the Tauri updater (minisign) key — CI secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, public key embedded in `tauri.conf.json` — so every bundle ships a detached `.sig` and the release publishes a `latest.json`. Note: this signs update *payloads*; it is **not** OS code signing (macOS/Windows still warn on first launch), and the in-app auto-updater plugin is **not yet wired up**, so these signatures aren't consumed at runtime today.
+Each artifact is signed with the Tauri updater (minisign) key — CI secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, public key embedded in `tauri.conf.json` — so every bundle ships a detached `.sig` and the release publishes a `latest.json`. The in-app updater (Settings → Updates) checks `latest.json` and verifies the signature against the embedded public key before installing. Note: this signs update *payloads*; it is **not** OS code signing, so macOS/Windows still warn on first launch.
 
 A workflow_dispatch trigger is also available for dry-runs that won't fight the production tag.
 
@@ -132,7 +135,7 @@ src/                React + TypeScript frontend
 
 src-tauri/          Rust backend
   src/
-    crypto/         Argon2id + AES-256-GCM
+    crypto/         Argon2id + XChaCha20-Poly1305 (AES-GCM read-only for v1)
     vault/          Vault types, atomic-write encrypted storage
     totp.rs         RFC 6238 TOTP (SHA-1 / 256 / 512)
     backup.rs       Portable JSON backup envelope

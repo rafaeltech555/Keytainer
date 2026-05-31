@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ipc } from "../lib/ipc";
 import { isAppError } from "../lib/types";
+import { useT } from "../lib/i18n";
 
 interface Props {
   onUnlocked: () => void;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function Unlock({ onUnlocked, reason }: Props) {
+  const t = useT();
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,9 +32,9 @@ export function Unlock({ onUnlocked, reason }: Props) {
       onUnlocked();
     } catch (e) {
       if (isAppError(e) && e.kind === "WrongPassword") {
-        setError("主密碼錯誤");
+        setError(t("unlock_wrong_pw"));
       } else if (isAppError(e) && e.kind === "VaultCorrupt") {
-        setError("保險庫檔案損毀或非 Keytainer 檔案");
+        setError(t("unlock_corrupt"));
       } else {
         setError(isAppError(e) ? e.message : String(e));
       }
@@ -50,9 +52,9 @@ export function Unlock({ onUnlocked, reason }: Props) {
       onUnlocked();
     } catch (e) {
       if (isAppError(e) && e.kind === "KeychainUnavailable") {
-        setError("Keychain 無法存取，請改用主密碼");
+        setError(t("unlock_keychain_unavailable"));
       } else if (isAppError(e) && e.kind === "WrongPassword") {
-        setError("Keychain 內的金鑰跟保險庫對不起來，請改用主密碼");
+        setError(t("unlock_keychain_mismatch"));
       } else {
         setError(isAppError(e) ? e.message : String(e));
       }
@@ -64,19 +66,19 @@ export function Unlock({ onUnlocked, reason }: Props) {
   return (
     <div className="screen centered">
       <form className="card" onSubmit={submit}>
-        <h1>解鎖 Keytainer</h1>
+        <h1>{t("unlock_title")}</h1>
         {reason === "idle" && (
-          <p className="muted">已自動鎖定（閒置過久）</p>
+          <p className="muted">{t("unlock_idle")}</p>
         )}
 
         {keychainOption && (
           <button type="button" className="secondary" onClick={quickUnlock} disabled={busy}>
-            🔑 用系統 keychain 一鍵解鎖
+            {t("unlock_keychain_btn")}
           </button>
         )}
 
         <label>
-          主密碼
+          {t("unlock_pw_label")}
           <input
             type="password"
             value={pw}
@@ -89,7 +91,7 @@ export function Unlock({ onUnlocked, reason }: Props) {
         {error && <div className="error">{error}</div>}
 
         <button type="submit" disabled={!pw || busy}>
-          {busy ? "解鎖中…" : "解鎖"}
+          {busy ? t("unlock_unlocking") : t("unlock_btn")}
         </button>
       </form>
     </div>

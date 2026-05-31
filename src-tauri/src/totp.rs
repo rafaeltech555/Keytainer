@@ -41,33 +41,39 @@ pub fn remaining_seconds(entry: &TotpEntry, unix_seconds: u64) -> u32 {
     period - (unix_seconds % period as u64) as u32
 }
 
-fn truncate(bytes: &[u8]) -> u32 {
-    let offset = (bytes[bytes.len() - 1] & 0x0f) as usize;
-    ((bytes[offset] & 0x7f) as u32) << 24
+/// RFC 4226 dynamic truncation. Guards against a short HMAC so a malformed
+/// digest can never index out of bounds (all of SHA-1/256/512 produce ≥20
+/// bytes, so this only fires on a logic error, but we never panic).
+fn truncate(bytes: &[u8]) -> AppResult<u32> {
+    let offset = (*bytes.last().ok_or(AppError::InvalidTotpSecret)? & 0x0f) as usize;
+    if offset + 4 > bytes.len() {
+        return Err(AppError::InvalidTotpSecret);
+    }
+    Ok(((bytes[offset] & 0x7f) as u32) << 24
         | (bytes[offset + 1] as u32) << 16
         | (bytes[offset + 2] as u32) << 8
-        | (bytes[offset + 3] as u32)
+        | (bytes[offset + 3] as u32))
 }
 
 fn hotp_sha1(secret: &[u8], counter_be: &[u8; 8]) -> AppResult<u32> {
     let mut mac = <Hmac<Sha1> as Mac>::new_from_slice(secret)
         .map_err(|e| AppError::Crypto(format!("hmac key: {e}")))?;
     mac.update(counter_be);
-    Ok(truncate(&mac.finalize().into_bytes()))
+    truncate(&mac.finalize().into_bytes())
 }
 
 fn hotp_sha256(secret: &[u8], counter_be: &[u8; 8]) -> AppResult<u32> {
     let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(secret)
         .map_err(|e| AppError::Crypto(format!("hmac key: {e}")))?;
     mac.update(counter_be);
-    Ok(truncate(&mac.finalize().into_bytes()))
+    truncate(&mac.finalize().into_bytes())
 }
 
 fn hotp_sha512(secret: &[u8], counter_be: &[u8; 8]) -> AppResult<u32> {
     let mut mac = <Hmac<Sha512> as Mac>::new_from_slice(secret)
         .map_err(|e| AppError::Crypto(format!("hmac key: {e}")))?;
     mac.update(counter_be);
-    Ok(truncate(&mac.finalize().into_bytes()))
+    truncate(&mac.finalize().into_bytes())
 }
 
 #[cfg(test)]
