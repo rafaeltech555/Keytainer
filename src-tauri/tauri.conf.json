@@ -58,7 +58,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhDM0Q0NkY0RkU0MUI5NkMKUldSc3VVSCs5RVk5akx5TFhVdUdYcjUzTGFXOHdMM2pHRDg2WWY1eDdBMlpNcGFtdDR4ZHpqL3kK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ5RkM0MUQ0OTY4OTZCOTUKUldTVmE0bVcxRUg4U2V0R2hHc3ZBRWpXWEVmbjBubmlQYWpLWlpZTTFNdGFUaml1Q3BrNGp0QlMK",
       "endpoints": [
         "https://github.com/rafaeltech555/Keytainer/releases/latest/download/latest.json"
       ]
