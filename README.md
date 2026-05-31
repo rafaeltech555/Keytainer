@@ -118,6 +118,8 @@ git push origin v<x.y.z>
 
 `.github/workflows/release.yml` then builds for macOS (aarch64 + x86_64), Linux (x86_64), and Windows (x86_64) on native runners, and uploads the installers to a **draft** release on GitHub. Edit the draft, write notes (see prior releases for the template), then publish.
 
+Each artifact is signed with the Tauri updater (minisign) key — CI secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, public key embedded in `tauri.conf.json` — so every bundle ships a detached `.sig` and the release publishes a `latest.json`. Note: this signs update *payloads*; it is **not** OS code signing (macOS/Windows still warn on first launch), and the in-app auto-updater plugin is **not yet wired up**, so these signatures aren't consumed at runtime today.
+
 A workflow_dispatch trigger is also available for dry-runs that won't fight the production tag.
 
 ## Project layout
