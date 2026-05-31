@@ -10,12 +10,12 @@
 //! a *decrypt-only* AES path so existing vaults still open and can be
 //! transparently migrated to v2 on the next save.
 
-// aes_gcm and chacha20poly1305 depend on different versions of the `aead`
-// crate, so each cipher needs the traits from its own crate (imported
-// anonymously to avoid name clashes).
-use aes_gcm::aead::Aead as _;
-use aes_gcm::{Aes256Gcm, KeyInit as _, Nonce};
-use chacha20poly1305::aead::{Aead as _, KeyInit as _, Payload};
+// aes_gcm and chacha20poly1305 share the same `aead` crate version, so the
+// `Aead` / `KeyInit` traits are one and the same — import them once (via
+// aes_gcm) and pull only `Payload` from chacha for the AAD-carrying calls.
+use aes_gcm::aead::{Aead as _, KeyInit as _};
+use aes_gcm::{Aes256Gcm, Nonce};
+use chacha20poly1305::aead::Payload;
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use rand::RngCore;
 

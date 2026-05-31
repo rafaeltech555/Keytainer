@@ -135,7 +135,7 @@ src/                React + TypeScript frontend
 
 src-tauri/          Rust backend
   src/
-    crypto/         Argon2id + AES-256-GCM
+    crypto/         Argon2id + XChaCha20-Poly1305 (AES-GCM read-only for v1)
     vault/          Vault types, atomic-write encrypted storage
     totp.rs         RFC 6238 TOTP (SHA-1 / 256 / 512)
     backup.rs       Portable JSON backup envelope
