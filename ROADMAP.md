@@ -60,9 +60,11 @@ Gaps versus a mainstream password manager, roughly in priority order.
 None of these are committed to a release yet.
 
 ### Quality & confidence
-- **Frontend tests.** The Rust core has 45 tests; the React UI has none.
-  Add a Vitest harness covering error mapping, TOTP polling, lock
-  navigation, and the i18n resolver.
+- **Frontend tests.** ✅ A Vitest + Testing Library harness now covers the
+  i18n resolver, TOTP polling (`TotpDisplay`), lock navigation (`App`), and
+  every route — `Setup`, `Unlock`, `List`, `ItemDetail`, and `Settings`
+  (error mapping, change-password, locale switch, keychain toggle, updater,
+  and backup/restore) — 62 tests in 8 files (`pnpm test`).
 - **Backend test gaps.** `session` (idle watcher / lock), `keychain`,
   and `clipboard` auto-clear have no direct tests.
 

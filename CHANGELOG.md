@@ -5,6 +5,13 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Frontend test suite.** Vitest + React Testing Library harness (`pnpm
+  test`) — 62 tests covering the i18n resolver, TOTP polling, lock
+  navigation, and every route (`Setup`, `Unlock`, `List`, `ItemDetail`,
+  `Settings`), including backend-error mapping, change-password, locale
+  switch, keychain toggle, the updater, and backup/restore.
+
 ## [0.2.0] — 2026-05-31
 
 ### Security
