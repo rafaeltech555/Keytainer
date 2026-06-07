@@ -440,3 +440,70 @@ button.danger {
   margin-top: 0.2rem;
   opacity: 0.85;
 }
+.audit-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.audit-header h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.15rem;
+}
+.audit-summary {
+  margin: 4px 0 16px;
+}
+.audit-section {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 20px 0 8px;
+}
+.audit-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.audit-group-head {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 10px 14px 4px;
+}
+.audit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+.audit-group-head + .audit-row {
+  border-top: none;
+}
+.audit-row:hover {
+  background: var(--surface-2);
+}
+.audit-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.audit-row-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.audit-pill {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--warn, #e0a800);
+}
