@@ -40,6 +40,7 @@ pub fn run() {
             commands::delete_item,
             commands::compute_totp,
             commands::copy_password,
+            commands::copy_history_password,
             commands::copy_totp,
             commands::get_settings,
             commands::save_settings,

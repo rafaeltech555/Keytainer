@@ -332,6 +332,26 @@ pub fn copy_password(
     clipboard.write_with_auto_clear(secret, Duration::from_secs(cfg.clipboard_clear_seconds))
 }
 
+#[tauri::command]
+pub fn copy_history_password(
+    id: Uuid,
+    index: usize,
+    state: State<'_, AppState>,
+    clipboard: State<'_, ClipboardState>,
+) -> AppResult<()> {
+    let secret = state.with_session(|s| {
+        s.vault
+            .items
+            .iter()
+            .find(|i| i.id == id)
+            .and_then(|i| i.password_history.get(index))
+            .map(|e| e.password.clone())
+            .ok_or(AppError::ItemNotFound(id))
+    })?;
+    let cfg = settings::load();
+    clipboard.write_with_auto_clear(secret, Duration::from_secs(cfg.clipboard_clear_seconds))
+}
+
 /// Copy an item's current TOTP code (not the secret) to the clipboard.
 #[tauri::command]
 pub fn copy_totp(
