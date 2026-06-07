@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>產生器面板示意</title>
+<style>
+  :root{
+    --bg:#0f1115; --surface:#181b22; --surface-2:#20242d; --border:#2a2f3a;
+    --text:#e6e7eb; --muted:#9aa1ad; --accent:#6ea8fe; --accent-fg:#08101f;
+    --radius:10px;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);
+       padding:24px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+  .col{width:380px}
+  .note{color:var(--muted);font-size:.8rem;text-align:center;margin-bottom:12px}
+  label.field{display:block;font-size:.85rem;color:var(--muted);margin-bottom:10px}
+  .pw-row{display:flex;gap:8px;align-items:center;margin-top:4px}
+  .pw-row input{flex:1;background:var(--surface-2);color:var(--text);
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.9rem}
+  .btn{background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:8px 10px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+  .btn.accent{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+  /* generator panel */
+  .gen-panel{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:14px;margin-top:8px}
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:8px;overflow:hidden;margin-bottom:14px}
+  .seg button{flex:1;background:transparent;border:none;color:var(--muted);
+    padding:7px;font-size:.85rem;cursor:pointer}
+  .seg button.active{background:var(--accent);color:var(--accent-fg)}
+  .row{display:flex;align-items:center;justify-content:space-between;
+    gap:10px;margin:11px 0;font-size:.88rem}
+  .row .lbl{color:var(--text)}
+  .row input[type=range]{flex:1;margin:0 10px}
+  .row .val{color:var(--muted);min-width:2.5ch;text-align:right;font-variant-numeric:tabular-nums}
+  select,.num{background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+    border-radius:6px;padding:4px 8px;font-size:.85rem}
+  .sw{width:38px;height:22px;border-radius:999px;background:var(--surface-2);
+    border:1px solid var(--border);position:relative;cursor:pointer}
+  .sw.on{background:var(--accent);border-color:transparent}
+  .sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+    background:#cfd3da;transition:left .15s}
+  .sw.on i{left:18px;background:var(--accent-fg)}
+  .gen-go{width:100%;margin-top:12px}
+  h3{font-size:.95rem;margin:0 0 2px}
+  .cap{font-size:.75rem;color:var(--muted);margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+  <!-- 隨機字元模式 -->
+  <div class="col">
+    <div class="note">展開後 — 隨機字元模式</div>
+    <label class="field">密碼
+      <div class="pw-row">
+        <input type="text" value="k7$Rm2!qPv9xZ4nL">
+        <button class="btn">顯示</button>
+        <button class="btn">⚙ 產生</button>
+      </div>
+    </label>
+    <div class="gen-panel">
+      <div class="seg">
+        <button class="active">隨機字元</button>
+        <button>Passphrase</button>
+      </div>
+      <div class="row"><span class="lbl">長度</span>
+        <input type="range" min="8" max="64" value="20"><span class="val">20</span></div>
+      <div class="row"><span class="lbl">包含符號 !@#$</span><span class="sw on"><i></i></span></div>
+      <div class="row"><span class="lbl">排除易混淆字元 (0 O 1 l I)</span><span class="sw"><i></i></span></div>
+      <button class="btn accent gen-go">產生</button>
+    </div>
+    <div class="cap">滑桿調長度、兩個開關控制符號與易混淆字元。</div>
+  </div>
+
+  <!-- Passphrase 模式 -->
+  <div class="col">
+    <div class="note">展開後 — Passphrase 模式</div>
+    <label class="field">密碼
+      <div class="pw-row">
+        <input type="text" value="Trumpet-Cabin-Velvet-Mocking-Dragon7">
+        <button class="btn">顯示</button>
+        <button class="btn">⚙ 產生</button>
+      </div>
+    </label>
+    <div class="gen-panel">
+      <div class="seg">
+        <button>隨機字元</button>
+        <button class="active">Passphrase</button>
+      </div>
+      <div class="row"><span class="lbl">詞數</span>
+        <input type="range" min="3" max="12" value="5"><span class="val">5</span></div>
+      <div class="row"><span class="lbl">分隔符</span>
+        <select><option>-</option><option>.</option><option>_</option><option>空格</option></select></div>
+      <div class="row"><span class="lbl">每字首字母大寫</span><span class="sw on"><i></i></span></div>
+      <div class="row"><span class="lbl">結尾加數字</span><span class="sw on"><i></i></span></div>
+      <button class="btn accent gen-go">產生</button>
+    </div>
+    <div class="cap">EFF 7776 詞;5 詞 ≈ 64 bits。分隔符 / 大寫 / 數字可調。</div>
+  </div>
+</body>
+</html>
