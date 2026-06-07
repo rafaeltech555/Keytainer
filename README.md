@@ -113,7 +113,7 @@ Run the Rust test suite (60 tests):
 cd src-tauri && cargo test
 ```
 
-Run the frontend test suite (Vitest + Testing Library, 62 tests):
+Run the frontend test suite (Vitest + Testing Library, 72 tests):
 ```bash
 pnpm test          # one-shot
 pnpm test:watch    # watch mode

@@ -73,8 +73,9 @@ None of these are committed to a release yet.
   and is better suited to an integration test.
 
 ### Features
-- **Password strength meter** at setup and on the item form (currently
-  only an 8-char minimum).
+- **Password strength meter.** ✅ A zxcvbn-ts meter at setup,
+  change-password, and the item form; master passwords are gated at
+  score ≥ 2, weak item passwords get a soft confirm-to-save.
 - **Duplicate / reused password detection** and a basic audit view.
 - **Password history** per item.
 - **Generator upgrades:** passphrase mode, ambiguous-character exclusion,

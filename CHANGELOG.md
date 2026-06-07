@@ -6,8 +6,12 @@ Versions follow [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Password strength meter.** A zxcvbn-based strength bar now appears at
+  master-password setup, master-password change, and the per-item password
+  field. The master password must reach at least a "Fair" score to be
+  accepted; weak item passwords prompt a one-click confirmation before saving.
 - **Frontend test suite.** Vitest + React Testing Library harness (`pnpm
-  test`) — 62 tests covering the i18n resolver, TOTP polling, lock
+  test`) — 72 tests covering the i18n resolver, TOTP polling, lock
   navigation, and every route (`Setup`, `Unlock`, `List`, `ItemDetail`,
   `Settings`), including backend-error mapping, change-password, locale
   switch, keychain toggle, the updater, and backup/restore.
