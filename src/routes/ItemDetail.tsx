@@ -4,6 +4,8 @@ import type { ItemInput, VaultItem, TotpEntry, TotpAlg } from "../lib/types";
 import { isAppError } from "../lib/types";
 import { TotpDisplay } from "../components/TotpDisplay";
 import { useT, type TKey } from "../lib/i18n";
+import { scorePassword, MIN_MASTER_SCORE } from "../lib/strength";
+import { StrengthMeter } from "../components/StrengthMeter";
 
 interface Props {
   itemId: string | "new";
@@ -31,6 +33,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   const [form, setForm] = useState<ItemInput>(empty);
   const [tagsInput, setTagsInput] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [confirmWeak, setConfirmWeak] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +92,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   async function generate() {
     const pw = await ipc.generatePassword(20, true);
     patch("password", pw);
+    setConfirmWeak(false);
     setShowPw(true);
   }
 
@@ -107,6 +111,11 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
+    const pw = form.password;
+    if (pw && scorePassword(pw) < MIN_MASTER_SCORE && !confirmWeak) {
+      setConfirmWeak(true);
+      return; // show the warning; a second click confirms
+    }
     setBusy(true);
     setError(null);
     try {
@@ -195,13 +204,20 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
             <input
               type={showPw ? "text" : "password"}
               value={form.password}
-              onChange={(e) => patch("password", e.target.value)}
+              onChange={(e) => {
+                patch("password", e.target.value);
+                setConfirmWeak(false);
+              }}
             />
             <button type="button" onClick={() => setShowPw((s) => !s)}>
               {showPw ? t("detail_hide") : t("detail_show")}
             </button>
             <button type="button" onClick={generate}>{t("detail_generate")}</button>
           </div>
+          <StrengthMeter password={form.password} />
+          {confirmWeak && (
+            <span className="error-inline">{t("detail_pw_weak_warn")}</span>
+          )}
         </label>
 
         <label>
@@ -253,7 +269,11 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
 
         <div className="form-actions">
           <button type="submit" disabled={busy || !form.site_name}>
-            {busy ? t("detail_saving") : t("save")}
+            {busy
+              ? t("detail_saving")
+              : confirmWeak
+                ? t("detail_save_weak")
+                : t("save")}
           </button>
           <button type="button" className="secondary" onClick={onClose}>
             {t("cancel")}

@@ -18,6 +18,12 @@ const ipc = vi.hoisted(() => ({
 }));
 vi.mock("../lib/ipc", () => ({ ipc }));
 
+const strength = vi.hoisted(() => ({
+  scorePassword: vi.fn(),
+  MIN_MASTER_SCORE: 2,
+}));
+vi.mock("../lib/strength", () => strength);
+
 import { ItemDetail } from "./ItemDetail";
 
 const vaultItem = (over: Partial<VaultItem> = {}): VaultItem => ({
@@ -53,6 +59,7 @@ beforeEach(() => {
   ipc.updateItem.mockResolvedValue(undefined);
   ipc.deleteItem.mockResolvedValue(undefined);
   ipc.generatePassword.mockResolvedValue("GENERATEDpassword20!");
+  strength.scorePassword.mockReturnValue(4);
 });
 
 afterEach(() => {
@@ -117,6 +124,23 @@ describe("ItemDetail — new item", () => {
     renderDetail("new");
     await user.click(screen.getByRole("button", { name: "Add 2FA (TOTP secret)" }));
     expect(screen.getByLabelText("Secret (base32)")).toBeInTheDocument();
+  });
+
+  it("warns before saving a weak password and saves on the second click", async () => {
+    strength.scorePassword.mockReturnValue(1);
+    const user = userEvent.setup();
+    renderDetail("new");
+    await user.type(screen.getByLabelText("Site name"), "Example");
+    await user.type(screen.getByLabelText("Password"), "weakpw");
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(ipc.addItem).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("This password is weak. Click Save again to keep it anyway."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save anyway" }));
+    expect(ipc.addItem).toHaveBeenCalledTimes(1);
   });
 });
 
