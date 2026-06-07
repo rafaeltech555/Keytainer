@@ -10,12 +10,19 @@ const ipc = vi.hoisted(() => ({
 }));
 vi.mock("../lib/ipc", () => ({ ipc }));
 
+const strength = vi.hoisted(() => ({
+  scorePassword: vi.fn(),
+  MIN_MASTER_SCORE: 2,
+}));
+vi.mock("../lib/strength", () => strength);
+
 import { Setup } from "./Setup";
 
 beforeEach(() => {
   ipc.getSystemLocale.mockResolvedValue("en");
   ipc.getSettings.mockResolvedValue({ locale: "en" });
   ipc.createVault.mockResolvedValue(undefined);
+  strength.scorePassword.mockReturnValue(4);
 });
 
 const pwField = () => screen.getByLabelText(/Master password \(at least 8/);
@@ -67,5 +74,17 @@ describe("Setup", () => {
     await user.click(createBtn());
     expect(await screen.findByText("disk full")).toBeInTheDocument();
     expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  it("keeps create disabled and warns when the password is too weak", async () => {
+    strength.scorePassword.mockReturnValue(1);
+    const user = userEvent.setup();
+    renderWithI18n(<Setup onCreated={vi.fn()} />);
+    await user.type(pwField(), "weakish12");
+    await user.type(confirmField(), "weakish12");
+    expect(
+      screen.getByText("Password is too weak — add length or variety."),
+    ).toBeInTheDocument();
+    expect(createBtn()).toBeDisabled();
   });
 });

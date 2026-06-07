@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ipc } from "../lib/ipc";
 import { isAppError } from "../lib/types";
 import { useT } from "../lib/i18n";
+import { scorePassword, MIN_MASTER_SCORE } from "../lib/strength";
+import { StrengthMeter } from "../components/StrengthMeter";
 
 interface Props {
   onCreated: () => void;
@@ -14,8 +16,10 @@ export function Setup({ onCreated }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const score = scorePassword(pw);
+  const tooWeak = pw.length >= 8 && score < MIN_MASTER_SCORE;
   const canSubmit =
-    pw.length >= 8 && pw === confirm && !busy;
+    pw.length >= 8 && score >= MIN_MASTER_SCORE && pw === confirm && !busy;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,6 +54,10 @@ export function Setup({ onCreated }: Props) {
             autoFocus
             autoComplete="new-password"
           />
+          <StrengthMeter password={pw} />
+          {tooWeak && (
+            <span className="error-inline">{t("pw_too_weak")}</span>
+          )}
         </label>
 
         <label>
