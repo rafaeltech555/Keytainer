@@ -100,6 +100,20 @@ const en = {
   detail_history_copied: "Copied",
   detail_history_restore: "Use again",
 
+  // Generator
+  gen_panel_toggle: "Generator",
+  gen_mode_random: "Random",
+  gen_mode_passphrase: "Passphrase",
+  gen_length: "Length",
+  gen_symbols: "Symbols",
+  gen_avoid_ambiguous: "Avoid ambiguous (0 O 1 l I)",
+  gen_words: "Words",
+  gen_separator: "Separator",
+  gen_sep_space: "Space",
+  gen_capitalize: "Capitalize",
+  gen_number: "Add a number",
+  gen_generate: "Generate",
+
   totp_secret: "Secret (base32)",
   totp_algorithm: "Algorithm",
   totp_digits: "Digits",
@@ -238,6 +252,20 @@ const zhTW: Dict = {
   detail_history_copy: "複製",
   detail_history_copied: "已複製",
   detail_history_restore: "重新使用",
+
+  // Generator
+  gen_panel_toggle: "產生器",
+  gen_mode_random: "隨機字元",
+  gen_mode_passphrase: "Passphrase",
+  gen_length: "長度",
+  gen_symbols: "符號",
+  gen_avoid_ambiguous: "排除易混淆 (0 O 1 l I)",
+  gen_words: "詞數",
+  gen_separator: "分隔符",
+  gen_sep_space: "空格",
+  gen_capitalize: "首字母大寫",
+  gen_number: "加數字",
+  gen_generate: "產生",
 
   totp_secret: "Secret（base32）",
   totp_algorithm: "演算法",
