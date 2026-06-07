@@ -19,13 +19,12 @@ Grab the right file for your OS from the **[latest release](https://github.com/r
 | Ubuntu / Debian | `Keytainer_<ver>_amd64.deb` | `sudo dpkg -i ./Keytainer_<ver>_amd64.deb` |
 | Fedora / RHEL | `Keytainer-<ver>-1.x86_64.rpm` | `sudo rpm -i ./Keytainer-<ver>-1.x86_64.rpm` |
 | Any Linux | `Keytainer_<ver>_amd64.AppImage` | `chmod +x` then double-click |
-| macOS Apple Silicon | `Keytainer_<ver>_aarch64.dmg` | one-time Gatekeeper bypass ↓ |
-| macOS Intel | `Keytainer_<ver>_x64.dmg` | one-time Gatekeeper bypass ↓ |
-| Windows | `Keytainer_<ver>_x64-setup.exe` | one-time SmartScreen bypass ↓ |
 
-### macOS first-launch bypass (one-time)
+> **Releases are Linux-only for now.** macOS and Windows builds would ship unsigned and trip Gatekeeper / SmartScreen on first launch, so they aren't published yet — see [OS code signing](#os-code-signing-not-yet-enabled). To run on macOS or Windows in the meantime, [build from source](#build-from-source); the first-launch bypass for your own unsigned build is below.
 
-The binary isn't code-signed (no Apple Developer cert). Gatekeeper will refuse the first launch. To allow it:
+### macOS first-launch bypass (one-time, self-built)
+
+A self-built binary isn't code-signed (no Apple Developer cert). Gatekeeper will refuse the first launch. To allow it:
 
 1. Open `/Applications`
 2. **Right-click** Keytainer → **Open**
@@ -33,7 +32,7 @@ The binary isn't code-signed (no Apple Developer cert). Gatekeeper will refuse t
 
 After this, normal double-click works forever.
 
-### Windows first-launch bypass (one-time)
+### Windows first-launch bypass (one-time, self-built)
 
 SmartScreen will show "Windows protected your PC". Click **More info → Run anyway**. Same reason as macOS — no code-signing cert.
 
@@ -126,7 +125,9 @@ git tag v<x.y.z>
 git push origin v<x.y.z>
 ```
 
-`.github/workflows/release.yml` then builds for macOS (aarch64 + x86_64), Linux (x86_64), and Windows (x86_64) on native runners. It runs as three jobs: `create-release` makes a single draft release, `build-tauri` (the platform matrix) uploads every installer to that one release id — so `tauri-action` merges all platforms into a single `latest.json` — and `publish-release` flips it out of draft once every build succeeds. You can still edit the release notes afterwards (see prior releases for the template).
+`.github/workflows/release.yml` then builds the **Linux** installers (`.deb` / `.rpm` / `.AppImage`, x86_64) on a native runner. It runs as three jobs: `create-release` makes a single draft release, `build-tauri` (the platform matrix) uploads every installer to that one release id — so `tauri-action` merges all platforms into a single `latest.json` — and `publish-release` flips it out of draft once every build succeeds. You can still edit the release notes afterwards (see prior releases for the template).
+
+The macOS and Windows matrix entries are commented out in the workflow because they would ship unsigned; re-enable them once [OS code signing](#os-code-signing-not-yet-enabled) is configured. The three-job structure already handles the multi-platform case (a single merged release + `latest.json`), so re-enabling is just uncommenting the matrix entries.
 
 Each artifact is signed with the Tauri updater (minisign) key — CI secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, public key embedded in `tauri.conf.json` — so every bundle ships a detached `.sig` and the release publishes a `latest.json`. The in-app updater (Settings → Updates) checks `latest.json` and verifies the signature against the embedded public key before installing. Note: this signs update *payloads*; it is **not** OS code signing, so macOS/Windows still warn on first launch.
 

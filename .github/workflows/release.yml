@@ -56,14 +56,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
+          # Linux only for now. macOS/Windows builds would ship unsigned and
+          # warn on first launch (Gatekeeper / SmartScreen) — re-enable the
+          # entries below once OS code signing is set up (see the README
+          # "OS code signing" section).
           - platform: 'ubuntu-22.04'
             args: ''
-          - platform: 'windows-latest'
-            args: ''
+          # - platform: 'macos-latest'
+          #   args: '--target aarch64-apple-darwin'
+          # - platform: 'macos-latest'
+          #   args: '--target x86_64-apple-darwin'
+          # - platform: 'windows-latest'
+          #   args: ''
 
     runs-on: ${{ matrix.platform }}
     steps:

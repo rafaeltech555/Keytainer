@@ -5,6 +5,12 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Linux-only releases for now.** The release workflow publishes only the
+  Linux installers (`.deb` / `.rpm` / `.AppImage`). The macOS/Windows matrix
+  entries are commented out because they would ship unsigned and warn on
+  first launch; they'll be re-enabled once OS code signing is configured.
+
 ### Fixed
 - **Release workflow race.** The release pipeline is now a three-job pattern
   (create one draft release → matrix builds upload to that release id →
