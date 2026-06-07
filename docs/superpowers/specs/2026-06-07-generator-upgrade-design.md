@@ -60,8 +60,8 @@ pub fn generate(opts: &GenOptions) -> String { /* 見「行為」 */ }
   - 從 EFF 字典均勻隨機抽 `words` 個詞(可重複,獨立抽樣)。
   - `capitalize` 時每個詞首字母大寫。
   - 以 `separator` 連接(UI 限定 `-`、`.`、`_`、空格;後端接受任意字串)。
-  - `number` 時結尾再接 `separator` 與一位 `2..=9` 的數字(避開 0/1 等
-    易混淆數字)。
+  - `number` 時結尾直接接一位 `2..=9` 的數字(不加分隔符,對應 mockup 的
+    `…Dragon7`;`2..=9` 避開 0/1 等易混淆數字)。
 - 兩模式皆沿用既有做法:用後 `zeroize` 工作緩衝(明文必經 IPC 進 JS,那段
   無法 zeroize)。
 
@@ -127,7 +127,7 @@ generatePassword: (opts: GenOptions) =>
 
 | Key | EN | 繁中 |
 |-----|----|----|
-| `gen_panel_toggle` | Generate… | 產生… |
+| `gen_panel_toggle` | Generator | 產生器 |
 | `gen_mode_random` | Random | 隨機字元 |
 | `gen_mode_passphrase` | Passphrase | Passphrase |
 | `gen_length` | Length | 長度 |
