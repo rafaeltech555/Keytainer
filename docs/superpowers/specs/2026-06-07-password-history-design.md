@@ -139,7 +139,8 @@ copyHistoryPassword: (id: string, index: number) =>
 - 新增 state `const [history, setHistory] = useState<PasswordHistoryEntry[]>([])`,
   載入項目時 `setHistory(it.password_history ?? [])`。
 - 在表單密碼欄之後、**僅當 `history.length > 0`** 顯示「密碼歷史」區:
-  - 區段一個「顯示/隱藏」切換(重用 `detail_show`/`detail_hide`,預設遮罩)。
+  - 區段一個「顯示/隱藏」切換(`detail_history_show`/`detail_history_hide`,
+    預設遮罩)。
   - 每列:遮罩或明文的舊密碼、更改日期(`new Date(changed_at * 1000).toLocaleDateString()`)、
     **複製**按鈕(呼叫 `ipc.copyHistoryPassword(savedItemId, index)`,沿用既有
     「已複製」短暫提示模式)、**還原**按鈕(`patch("password", entry.password)`
@@ -152,12 +153,15 @@ copyHistoryPassword: (id: string, index: number) =>
 | Key | EN | 繁中 |
 |-----|----|----|
 | `detail_history_section` | Password history | 密碼歷史 |
+| `detail_history_show` | Show passwords | 顯示密碼 |
+| `detail_history_hide` | Hide passwords | 隱藏密碼 |
 | `detail_history_copy` | Copy | 複製 |
 | `detail_history_copied` | Copied | 已複製 |
 | `detail_history_restore` | Use again | 重新使用 |
 
-區段的顯示/隱藏切換沿用既有的 `detail_show` / `detail_hide`(通用「顯示/
-隱藏」),不另立新鍵。
+歷史區用自己的顯示/隱藏鍵(複數「Show passwords / 顯示密碼」),刻意與密碼欄
+既有的 `detail_show` / `detail_hide`(單數「Show / Hide」)區隔,避免畫面與測試
+出現兩個同名按鈕。
 
 ### 樣式（`src/App.css`)
 附加一個 `history-*` 小節(歷史列、遮罩文字、日期、按鈕),沿用 palette 變數。
