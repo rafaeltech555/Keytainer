@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod backup;
 pub mod clipboard;
 pub mod commands;

@@ -49,6 +49,9 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # Async runtime (for timers)
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 
+# Password strength scoring (audit)
+zxcvbn = "3"
+
 # Errors
 thiserror = "1"
 
