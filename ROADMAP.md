@@ -64,7 +64,8 @@ None of these are committed to a release yet.
   i18n resolver, TOTP polling (`TotpDisplay`), lock navigation (`App`), and
   every route — `Setup`, `Unlock`, `List`, `ItemDetail`, and `Settings`
   (error mapping, change-password, locale switch, keychain toggle, updater,
-  and backup/restore) — 62 tests in 8 files (`pnpm test`).
+  and backup/restore), plus the password-strength meter — 72 tests in 10
+  files (`pnpm test`).
 - **Backend tests.** ✅ `session` (lock/unlock, idle-timer bump, no-touch
   on a failed command), `clipboard` auto-clear generation/staleness, and
   `keychain` key encode/decode + 32-byte malformed-key guard are now
