@@ -59,12 +59,14 @@ Keytainer 的開發現況與接下來可能的方向。這是一份**活文件**
   resolver、TOTP 倒數（`TotpDisplay`)、鎖定導航（`App`),以及每個路由
   —— `Setup`、`Unlock`、`List`、`ItemDetail`、`Settings`(錯誤對應、
   變更密碼、locale 切換、keychain 開關、更新器、備份/還原),再加上
-  密碼強度計 —— 共 72 個測試、10 個檔案（`pnpm test`)。
+  密碼強度計、密碼 audit(安全檢查畫面)與密碼歷史 —— 共 78 個測試、11 個
+  檔案（`pnpm test`)。
 - **後端測試。** ✅ `session`(上鎖/解鎖、閒置計時器重置、失敗命令不
-  算活動)、`clipboard` 自動清除的 generation/staleness,以及
-  `keychain` 金鑰 encode/decode + 32-byte malformed-key 防護皆已覆蓋
-  —— 共 60 個 Rust 測試（`cd src-tauri && cargo test`)。唯一尚未測試的
-  是 `spawn_idle_watcher`,它需要 Tauri `AppHandle`,較適合整合測試。
+  算活動)、`clipboard` 自動清除的 generation/staleness、`keychain` 金鑰
+  encode/decode + 32-byte malformed-key 防護,以及 `audit`(重用/弱密碼)
+  與密碼歷史擷取皆已覆蓋 —— 共 71 個 Rust 測試（`cd src-tauri && cargo
+  test`)。唯一尚未測試的是 `spawn_idle_watcher`,它需要 Tauri `AppHandle`,
+  較適合整合測試。
 
 ### 功能
 - **密碼強度計。** ✅ 在 setup、變更密碼、項目表單以 zxcvbn-ts 顯示強度;
