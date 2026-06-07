@@ -106,3 +106,15 @@ export interface AuditReport {
   reused: ReuseGroup[];
   weak: WeakItem[];
 }
+
+export type GenMode = "chars" | "passphrase";
+export interface GenOptions {
+  mode: GenMode;
+  length: number;
+  symbols: boolean;
+  avoid_ambiguous: boolean;
+  words: number;
+  separator: string;
+  capitalize: boolean;
+  number: boolean;
+}
