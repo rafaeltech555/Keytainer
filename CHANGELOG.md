@@ -6,6 +6,10 @@ Versions follow [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Password audit.** A "Security check" screen (reachable from the vault
+  list) flags reused passwords (two or more items sharing one password) and
+  weak passwords (zxcvbn score below "fair"), computed entirely in the Rust
+  backend so passwords never leave it. Each finding links to the item to fix.
 - **Password strength meter.** A zxcvbn-based strength bar now appears at
   master-password setup, master-password change, and the per-item password
   field. The master password must reach at least a "Fair" score to be
