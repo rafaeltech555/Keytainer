@@ -91,6 +91,15 @@ const en = {
   detail_notes: "Notes",
   detail_saving: "Saving…",
   detail_confirm_delete: "Delete this item?",
+
+  // Password history
+  detail_history_section: "Password history",
+  detail_history_show: "Show passwords",
+  detail_history_hide: "Hide passwords",
+  detail_history_copy: "Copy",
+  detail_history_copied: "Copied",
+  detail_history_restore: "Use again",
+
   totp_secret: "Secret (base32)",
   totp_algorithm: "Algorithm",
   totp_digits: "Digits",
@@ -221,6 +230,15 @@ const zhTW: Dict = {
   detail_notes: "備註",
   detail_saving: "儲存中…",
   detail_confirm_delete: "確定要刪除這個項目嗎？",
+
+  // Password history
+  detail_history_section: "密碼歷史",
+  detail_history_show: "顯示密碼",
+  detail_history_hide: "隱藏密碼",
+  detail_history_copy: "複製",
+  detail_history_copied: "已複製",
+  detail_history_restore: "重新使用",
+
   totp_secret: "Secret（base32）",
   totp_algorithm: "演算法",
   totp_digits: "位數",
