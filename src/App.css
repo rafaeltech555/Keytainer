@@ -407,3 +407,36 @@ button.danger {
   margin-top: 2px;
   flex-shrink: 0;
 }
+
+.strength-meter {
+  margin-top: 0.4rem;
+}
+.strength-bar {
+  display: flex;
+  gap: 4px;
+}
+.strength-seg {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+  background: #3a3a3a;
+}
+.strength-meter.level-0 .strength-seg.filled,
+.strength-meter.level-1 .strength-seg.filled {
+  background: #d9534f;
+}
+.strength-meter.level-2 .strength-seg.filled {
+  background: #e0a800;
+}
+.strength-meter.level-3 .strength-seg.filled {
+  background: #5cb85c;
+}
+.strength-meter.level-4 .strength-seg.filled {
+  background: #2e7d32;
+}
+.strength-label {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+  opacity: 0.85;
+}
