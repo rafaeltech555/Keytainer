@@ -44,6 +44,7 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::generate_password,
+            commands::audit_passwords,
             commands::export_vault,
             commands::import_vault,
             commands::keychain_available,

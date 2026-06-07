@@ -487,6 +487,11 @@ pub fn unlock_with_keychain(state: State<'_, AppState>, app: AppHandle) -> AppRe
     Ok(())
 }
 
+#[tauri::command]
+pub fn audit_passwords(state: State<'_, AppState>) -> AppResult<crate::audit::AuditReport> {
+    state.with_session(|s| Ok(crate::audit::audit(&s.vault)))
+}
+
 #[cfg(test)]
 mod tests {
     use secrecy::{ExposeSecret, SecretString};
