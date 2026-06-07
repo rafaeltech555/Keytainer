@@ -211,6 +211,7 @@ mod tests {
             url: Some("https://github.com".into()),
             notes: Some("work account".into()),
             tags: vec!["work".into()],
+            password_history: vec![],
             created_at: 0,
             updated_at: 0,
         }

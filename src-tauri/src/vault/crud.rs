@@ -98,6 +98,7 @@ mod tests {
             url: None,
             notes: None,
             tags: vec![],
+            password_history: vec![],
             created_at: 0,
             updated_at: 0,
         }
@@ -196,5 +197,12 @@ mod tests {
         let json = serde_json::to_string(&v).unwrap();
         let v2: Vault = serde_json::from_str(&json).unwrap();
         assert_eq!(v, v2);
+    }
+
+    #[test]
+    fn item_without_history_field_deserializes_to_empty() {
+        let json = r#"{"id":"00000000-0000-0000-0000-000000000000","site_name":"S","username":"u","password":"p","tags":[],"created_at":0,"updated_at":0}"#;
+        let item: VaultItem = serde_json::from_str(json).unwrap();
+        assert!(item.password_history.is_empty());
     }
 }

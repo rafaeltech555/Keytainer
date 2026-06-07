@@ -26,6 +26,13 @@ impl Default for Vault {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
+pub struct PasswordHistoryEntry {
+    pub password: String,
+    #[zeroize(skip)]
+    pub changed_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct VaultItem {
     #[zeroize(skip)]
     pub id: Uuid,
@@ -40,6 +47,8 @@ pub struct VaultItem {
     pub notes: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub password_history: Vec<PasswordHistoryEntry>,
     #[zeroize(skip)]
     pub created_at: i64,
     #[zeroize(skip)]

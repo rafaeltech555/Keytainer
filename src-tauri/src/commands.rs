@@ -74,6 +74,7 @@ impl ItemInput {
             url: self.url.take(),
             notes: self.notes.take(),
             tags: std::mem::take(&mut self.tags),
+            password_history: Vec::new(),
             created_at: 0,
             updated_at: 0,
         }

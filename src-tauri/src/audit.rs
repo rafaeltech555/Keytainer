@@ -111,6 +111,7 @@ mod tests {
             url: None,
             notes: None,
             tags: vec![],
+            password_history: vec![],
             created_at: 0,
             updated_at: 0,
         }
