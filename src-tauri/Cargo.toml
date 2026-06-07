@@ -1,6 +1,6 @@
 [package]
 name = "keytainer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Keytainer — local-only password manager"
 authors = ["Rafael <rafael.tech.career@gmail.com>"]
 edition = "2021"

@@ -5,6 +5,8 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-07
+
 ### Changed
 - **Linux-only releases for now.** The release workflow publishes only the
   Linux installers (`.deb` / `.rpm` / `.AppImage`). The macOS/Windows matrix
