@@ -61,6 +61,18 @@ const en = {
   list_empty: "No items yet — tap \"Add\" at the top right to start",
   list_unnamed: "(unnamed)",
 
+  // Audit
+  list_audit_btn: "Security check",
+  audit_title: "Security check",
+  audit_rescan: "Rescan",
+  audit_summary: "{reused} reused · {weak} weak",
+  audit_reused_section: "Reused passwords",
+  audit_weak_section: "Weak passwords",
+  audit_group_count: "{count} items share one password",
+  audit_weak_pill: "Weak",
+  audit_none: "No problems found ✓",
+  audit_loading: "Checking…",
+
   // ItemDetail
   detail_new: "New item",
   detail_copy_pw: "Copy password",
@@ -179,6 +191,18 @@ const zhTW: Dict = {
   list_no_match: "沒有符合的項目",
   list_empty: "還沒有任何項目，點右上「新增」開始",
   list_unnamed: "(未命名)",
+
+  // Audit
+  list_audit_btn: "安全檢查",
+  audit_title: "安全檢查",
+  audit_rescan: "重新掃描",
+  audit_summary: "{reused} 組重用 · {weak} 個弱密碼",
+  audit_reused_section: "重用密碼",
+  audit_weak_section: "弱密碼",
+  audit_group_count: "{count} 個項目共用同一組密碼",
+  audit_weak_pill: "弱",
+  audit_none: "沒有發現問題 ✓",
+  audit_loading: "檢查中…",
 
   detail_new: "新增項目",
   detail_copy_pw: "複製密碼",
