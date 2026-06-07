@@ -1,7 +1,10 @@
 use uuid::Uuid;
 
-use super::{Vault, VaultItem};
+use super::{PasswordHistoryEntry, Vault, VaultItem};
 use crate::error::{AppError, AppResult};
+
+/// Max number of previous passwords retained per item.
+pub const MAX_HISTORY: usize = 10;
 
 /// Current unix seconds. Wrapped so tests can override later if needed.
 pub fn now_unix() -> i64 {
@@ -36,9 +39,23 @@ pub fn update_item(vault: &mut Vault, updated: VaultItem) -> AppResult<()> {
         .ok_or(AppError::ItemNotFound(id))?;
 
     let created_at = vault.items[pos].created_at;
+
+    // Record the old password before replacing, if it actually changed and
+    // was non-empty. Newest first, capped at MAX_HISTORY.
+    let mut history = vault.items[pos].password_history.clone();
+    let old_password = vault.items[pos].password.clone();
+    if !old_password.is_empty() && old_password != updated.password {
+        history.insert(
+            0,
+            PasswordHistoryEntry { password: old_password, changed_at: now_unix() },
+        );
+        history.truncate(MAX_HISTORY);
+    }
+
     let mut next = updated;
     next.created_at = created_at;
     next.updated_at = now_unix();
+    next.password_history = history;
     register_tags(vault, &next.tags);
     vault.items[pos] = next;
     Ok(())
@@ -204,5 +221,66 @@ mod tests {
         let json = r#"{"id":"00000000-0000-0000-0000-000000000000","site_name":"S","username":"u","password":"p","tags":[],"created_at":0,"updated_at":0}"#;
         let item: VaultItem = serde_json::from_str(json).unwrap();
         assert!(item.password_history.is_empty());
+    }
+
+    #[test]
+    fn records_old_password_on_change() {
+        let mut v = Vault::default();
+        let id = add_item(&mut v, item("GitHub", "alice"));
+        let mut next = v.items[0].clone();
+        next.password = "newpw".into();
+        update_item(&mut v, next).unwrap();
+        assert_eq!(v.items[0].password_history.len(), 1);
+        assert_eq!(v.items[0].password_history[0].password, "pw");
+        assert!(v.items[0].password_history[0].changed_at > 0);
+        let _ = id;
+    }
+
+    #[test]
+    fn unchanged_password_records_nothing() {
+        let mut v = Vault::default();
+        add_item(&mut v, item("GitHub", "alice"));
+        let mut next = v.items[0].clone();
+        next.username = "bob".into(); // password unchanged
+        update_item(&mut v, next).unwrap();
+        assert!(v.items[0].password_history.is_empty());
+    }
+
+    #[test]
+    fn history_is_newest_first() {
+        let mut v = Vault::default();
+        add_item(&mut v, item("GitHub", "alice")); // pw = "pw"
+        let mut a = v.items[0].clone();
+        a.password = "B".into();
+        update_item(&mut v, a).unwrap(); // records "pw"
+        let mut b = v.items[0].clone();
+        b.password = "C".into();
+        update_item(&mut v, b).unwrap(); // records "B"
+        let hist: Vec<&str> = v.items[0].password_history.iter().map(|e| e.password.as_str()).collect();
+        assert_eq!(hist, vec!["B", "pw"]);
+    }
+
+    #[test]
+    fn history_is_capped_at_max() {
+        let mut v = Vault::default();
+        add_item(&mut v, item("GitHub", "alice"));
+        for n in 0..MAX_HISTORY + 5 {
+            let mut next = v.items[0].clone();
+            next.password = format!("pw{n}");
+            update_item(&mut v, next).unwrap();
+        }
+        assert_eq!(v.items[0].password_history.len(), MAX_HISTORY);
+    }
+
+    #[test]
+    fn empty_old_password_is_not_recorded() {
+        let mut v = Vault::default();
+        let mut it = item("GitHub", "alice");
+        it.password = "".into();
+        add_item(&mut v, it);
+        let mut next = v.items[0].clone();
+        next.password = "firstpw".into();
+        update_item(&mut v, next).unwrap();
+        assert!(v.items[0].password_history.is_empty());
     }
 }
