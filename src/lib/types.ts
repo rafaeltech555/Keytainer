@@ -83,3 +83,20 @@ export interface Settings {
   /** "system" (follow OS), "en", or "zh-TW". */
   locale: string;
 }
+
+export interface AuditItemRef {
+  id: string;
+  site_name: string;
+  username: string;
+}
+export interface ReuseGroup {
+  items: AuditItemRef[];
+}
+export interface WeakItem {
+  item: AuditItemRef;
+  score: number;
+}
+export interface AuditReport {
+  reused: ReuseGroup[];
+  weak: WeakItem[];
+}
