@@ -87,7 +87,10 @@ Keytainer 的開發現況與接下來可能的方向。這是一份**活文件**
 - **OS 程式碼簽章:** macOS（Apple Developer ID)與 Windows
   (Authenticode),以去除首次啟動的 Gatekeeper / SmartScreen 警告。
   需付費憑證;既有的更新器簽章是**不同**機制(它驗證的是更新內容,
-  而非 OS 層級的安裝檔)。
+  而非 OS 層級的安裝檔)。啟用步驟(要買哪些憑證、加哪些 CI secrets、
+  如何接上 tauri-action / `tauri.conf.json`)已寫在
+  [README 的 OS code signing 一節](README.md#os-code-signing-not-yet-enabled)
+  —— 待取得憑證後即可接線。
 - **發布流程修正。** ✅ 改成三段式(`create-release` 建單一 draft →
   `build-tauri` matrix 以同一 release id 上傳並合併 `latest.json` →
   `publish-release` 取消 draft),消除原本 matrix 競態產生兩個 draft、

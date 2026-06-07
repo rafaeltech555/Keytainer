@@ -132,6 +132,31 @@ Each artifact is signed with the Tauri updater (minisign) key — CI secrets `TA
 
 A workflow_dispatch trigger is also available for dry-runs that won't fight the production tag.
 
+## OS code signing (not yet enabled)
+
+The installers are currently **unsigned at the OS level**, which is why macOS Gatekeeper and Windows SmartScreen warn on first launch (see the bypass steps under [Install](#install)). Removing those warnings needs **paid certificates** and is separate from the updater signing above (that authenticates update payloads, not the installer). This is intentionally not wired up yet — enabling it requires accounts/certs only the project owner can obtain. When you're ready, here's the path:
+
+### macOS — Apple Developer ID + notarization
+
+1. Enrol in the [Apple Developer Program](https://developer.apple.com/programs/) (~US$99/year).
+2. Create a **Developer ID Application** certificate and export it as a `.p12`.
+3. Generate an [app-specific password](https://support.apple.com/en-us/102654) for notarization.
+4. Add these repo secrets and pass them as `env` to the `tauri-action` step in `build-tauri`:
+   - `APPLE_CERTIFICATE` — base64 of the `.p12`
+   - `APPLE_CERTIFICATE_PASSWORD` — the `.p12` export password
+   - `APPLE_SIGNING_IDENTITY` — e.g. `Developer ID Application: Your Name (TEAMID)`
+   - `APPLE_ID`, `APPLE_PASSWORD` (the app-specific password), `APPLE_TEAM_ID` — for notarization
+
+   `tauri-action` signs and notarizes automatically when these are present, and silently skips signing when they're absent (so the current unsigned builds keep working until you add them).
+
+### Windows — Authenticode
+
+1. Buy an Authenticode code-signing certificate from a CA. An **EV** certificate (~US$300–400/year) clears SmartScreen reputation immediately; a standard OV one (~US$200/year) builds reputation over time.
+2. Pick a key-storage path. EV certs are usually bound to a hardware/cloud HSM (Azure Key Vault, DigiCert KeyLocker, SignPath, …), driven via a Tauri `bundle.windows.signCommand`; a plain OV `.pfx` can instead be referenced by `bundle.windows.certificateThumbprint` + `timestampUrl` in `tauri.conf.json`, with the cert imported into the runner's store.
+3. Add the cert/secret to CI and fill in the chosen `tauri.conf.json` Windows signing config.
+
+This signs the installer at the OS level only; it does **not** replace the updater (minisign) signing.
+
 ## Project layout
 
 ```
