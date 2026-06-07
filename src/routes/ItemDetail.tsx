@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "../lib/ipc";
-import type { ItemInput, VaultItem, TotpEntry, TotpAlg, PasswordHistoryEntry } from "../lib/types";
+import type { GenOptions, ItemInput, VaultItem, TotpEntry, TotpAlg, PasswordHistoryEntry } from "../lib/types";
 import { isAppError } from "../lib/types";
 import { TotpDisplay } from "../components/TotpDisplay";
 import { useT, type TKey } from "../lib/i18n";
@@ -45,6 +45,20 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const histCopiedTimer = useRef<number | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
+  const [gen, setGen] = useState<GenOptions>({
+    mode: "chars",
+    length: 20,
+    symbols: true,
+    avoid_ambiguous: false,
+    words: 5,
+    separator: "-",
+    capitalize: true,
+    number: true,
+  });
+  function setGenOpt<K extends keyof GenOptions>(k: K, v: GenOptions[K]) {
+    setGen((g) => ({ ...g, [k]: v }));
+  }
 
   useEffect(() => {
     ipc.getSettings()
@@ -95,7 +109,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   }
 
   async function generate() {
-    const pw = await ipc.generatePassword(20, true);
+    const pw = await ipc.generatePassword(gen);
     patch("password", pw);
     setConfirmWeak(false);
     setShowPw(true);
@@ -235,13 +249,114 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
             <button type="button" onClick={() => setShowPw((s) => !s)}>
               {showPw ? t("detail_hide") : t("detail_show")}
             </button>
-            <button type="button" onClick={generate}>{t("detail_generate")}</button>
+            <button type="button" onClick={() => setGenOpen((o) => !o)}>
+              {t("gen_panel_toggle")}
+            </button>
           </div>
           <StrengthMeter password={form.password} />
           {confirmWeak && (
             <span className="error-inline">{t("detail_pw_weak_warn")}</span>
           )}
         </label>
+
+        {genOpen && (
+          <div className="gen-panel">
+            <div className="gen-seg">
+              <button
+                type="button"
+                className={gen.mode === "chars" ? "active" : ""}
+                onClick={() => setGenOpt("mode", "chars")}
+              >
+                {t("gen_mode_random")}
+              </button>
+              <button
+                type="button"
+                className={gen.mode === "passphrase" ? "active" : ""}
+                onClick={() => setGenOpt("mode", "passphrase")}
+              >
+                {t("gen_mode_passphrase")}
+              </button>
+            </div>
+
+            {gen.mode === "chars" ? (
+              <>
+                <label className="gen-row">
+                  <span>{t("gen_length")}</span>
+                  <input
+                    type="range"
+                    min={8}
+                    max={64}
+                    value={gen.length}
+                    onChange={(e) => setGenOpt("length", Number(e.target.value))}
+                  />
+                  <span className="gen-val">{gen.length}</span>
+                </label>
+                <label className="gen-row">
+                  <span>{t("gen_symbols")}</span>
+                  <input
+                    type="checkbox"
+                    checked={gen.symbols}
+                    onChange={(e) => setGenOpt("symbols", e.target.checked)}
+                  />
+                </label>
+                <label className="gen-row">
+                  <span>{t("gen_avoid_ambiguous")}</span>
+                  <input
+                    type="checkbox"
+                    checked={gen.avoid_ambiguous}
+                    onChange={(e) => setGenOpt("avoid_ambiguous", e.target.checked)}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="gen-row">
+                  <span>{t("gen_words")}</span>
+                  <input
+                    type="range"
+                    min={3}
+                    max={12}
+                    value={gen.words}
+                    onChange={(e) => setGenOpt("words", Number(e.target.value))}
+                  />
+                  <span className="gen-val">{gen.words}</span>
+                </label>
+                <label className="gen-row">
+                  <span>{t("gen_separator")}</span>
+                  <select
+                    value={gen.separator}
+                    onChange={(e) => setGenOpt("separator", e.target.value)}
+                  >
+                    <option value="-">-</option>
+                    <option value=".">.</option>
+                    <option value="_">_</option>
+                    <option value=" ">{t("gen_sep_space")}</option>
+                  </select>
+                </label>
+                <label className="gen-row">
+                  <span>{t("gen_capitalize")}</span>
+                  <input
+                    type="checkbox"
+                    checked={gen.capitalize}
+                    onChange={(e) => setGenOpt("capitalize", e.target.checked)}
+                  />
+                </label>
+                <label className="gen-row">
+                  <span>{t("gen_number")}</span>
+                  <input
+                    type="checkbox"
+                    checked={gen.number}
+                    onChange={(e) => setGenOpt("number", e.target.checked)}
+                  />
+                </label>
+              </>
+            )}
+
+            <button type="button" className="gen-go" onClick={generate}>
+              {t("gen_generate")}
+            </button>
+          </div>
+        )}
 
         {history.length > 0 && (
           <div className="history-block">

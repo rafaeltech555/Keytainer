@@ -553,3 +553,51 @@ button.danger {
   display: flex;
   gap: 6px;
 }
+.gen-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin: 4px 0 12px;
+}
+.gen-seg {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.gen-seg button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 7px;
+  cursor: pointer;
+}
+.gen-seg button.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.gen-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 9px 0;
+  font-size: 0.88rem;
+}
+.gen-row input[type="range"] {
+  flex: 1;
+}
+.gen-val {
+  min-width: 2.5ch;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.gen-go {
+  width: 100%;
+  margin-top: 10px;
+}

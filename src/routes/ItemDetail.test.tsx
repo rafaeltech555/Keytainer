@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithI18n } from "../test/render";
 import type { VaultItem } from "../lib/types";
@@ -111,13 +111,35 @@ describe("ItemDetail — new item", () => {
     );
   });
 
-  it("fills the password field from the generator", async () => {
+  it("opens the generator panel and generates with chosen options", async () => {
+    ipc.generatePassword.mockResolvedValue("GENERATEDpassword20!");
     const user = userEvent.setup();
     renderDetail("new");
+
+    await user.click(screen.getByRole("button", { name: "Generator" }));
     await user.click(screen.getByRole("button", { name: "Generate" }));
 
-    expect(ipc.generatePassword).toHaveBeenCalledWith(20, true);
-    expect(await screen.findByDisplayValue("GENERATEDpassword20!")).toBeInTheDocument();
+    expect(ipc.generatePassword).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "chars", length: 20, symbols: true }),
+    );
+    expect(
+      await screen.findByDisplayValue("GENERATEDpassword20!"),
+    ).toBeInTheDocument();
+  });
+
+  it("generates a passphrase with the chosen word count", async () => {
+    ipc.generatePassword.mockResolvedValue("Word-Word-Word-Word-Word-Word-Word");
+    const user = userEvent.setup();
+    renderDetail("new");
+
+    await user.click(screen.getByRole("button", { name: "Generator" }));
+    await user.click(screen.getByRole("button", { name: "Passphrase" }));
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "7" } });
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+
+    expect(ipc.generatePassword).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "passphrase", words: 7 }),
+    );
   });
 
   it("reveals the 2FA fields when adding 2FA", async () => {
