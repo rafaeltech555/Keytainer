@@ -89,7 +89,7 @@ describe("Settings — change password", () => {
     await screen.findByRole("heading", { name: "Settings" });
 
     await user.type(screen.getByLabelText("Current password"), "oldpassword");
-    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "newpassword");
+    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "v0yager-Quartz-9182");
     await user.type(screen.getByLabelText("Confirm new password"), "different123");
 
     expect(screen.getByText("The two entries don't match")).toBeInTheDocument();
@@ -103,8 +103,8 @@ describe("Settings — change password", () => {
     await screen.findByRole("heading", { name: "Settings" });
 
     await user.type(screen.getByLabelText("Current password"), "wrongpassword");
-    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "newpassword");
-    await user.type(screen.getByLabelText("Confirm new password"), "newpassword");
+    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "v0yager-Quartz-9182");
+    await user.type(screen.getByLabelText("Confirm new password"), "v0yager-Quartz-9182");
     await user.click(screen.getByRole("button", { name: "Change password" }));
 
     expect(await screen.findByText("Current password is wrong")).toBeInTheDocument();
@@ -116,11 +116,11 @@ describe("Settings — change password", () => {
     await screen.findByRole("heading", { name: "Settings" });
 
     await user.type(screen.getByLabelText("Current password"), "oldpassword");
-    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "newpassword");
-    await user.type(screen.getByLabelText("Confirm new password"), "newpassword");
+    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "v0yager-Quartz-9182");
+    await user.type(screen.getByLabelText("Confirm new password"), "v0yager-Quartz-9182");
     await user.click(screen.getByRole("button", { name: "Change password" }));
 
-    expect(ipc.changePassword).toHaveBeenCalledWith("oldpassword", "newpassword");
+    expect(ipc.changePassword).toHaveBeenCalledWith("oldpassword", "v0yager-Quartz-9182");
     expect(await screen.findByText("Master password changed ✓")).toBeInTheDocument();
   });
 

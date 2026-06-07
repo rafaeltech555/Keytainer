@@ -39,15 +39,15 @@ describe("Setup", () => {
     expect(createBtn()).toBeDisabled();
 
     await user.clear(pwField());
-    await user.type(pwField(), "longenough");
-    await user.type(confirmField(), "longenough");
+    await user.type(pwField(), "v0yager-Quartz-9182");
+    await user.type(confirmField(), "v0yager-Quartz-9182");
     expect(createBtn()).toBeEnabled();
   });
 
   it("shows an inline mismatch warning when confirmation differs", async () => {
     const user = userEvent.setup();
     renderWithI18n(<Setup onCreated={vi.fn()} />);
-    await user.type(pwField(), "longenough");
+    await user.type(pwField(), "v0yager-Quartz-9182");
     await user.type(confirmField(), "different");
     expect(screen.getByText("The two entries don't match")).toBeInTheDocument();
     expect(createBtn()).toBeDisabled();
@@ -57,10 +57,10 @@ describe("Setup", () => {
     const user = userEvent.setup();
     const onCreated = vi.fn();
     renderWithI18n(<Setup onCreated={onCreated} />);
-    await user.type(pwField(), "longenough");
-    await user.type(confirmField(), "longenough");
+    await user.type(pwField(), "v0yager-Quartz-9182");
+    await user.type(confirmField(), "v0yager-Quartz-9182");
     await user.click(createBtn());
-    expect(ipc.createVault).toHaveBeenCalledWith("longenough");
+    expect(ipc.createVault).toHaveBeenCalledWith("v0yager-Quartz-9182");
     expect(onCreated).toHaveBeenCalledTimes(1);
   });
 
@@ -69,8 +69,8 @@ describe("Setup", () => {
     const user = userEvent.setup();
     const onCreated = vi.fn();
     renderWithI18n(<Setup onCreated={onCreated} />);
-    await user.type(pwField(), "longenough");
-    await user.type(confirmField(), "longenough");
+    await user.type(pwField(), "v0yager-Quartz-9182");
+    await user.type(confirmField(), "v0yager-Quartz-9182");
     await user.click(createBtn());
     expect(await screen.findByText("disk full")).toBeInTheDocument();
     expect(onCreated).not.toHaveBeenCalled();
