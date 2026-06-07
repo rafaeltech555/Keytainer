@@ -108,7 +108,7 @@ pnpm tauri build
 # → src-tauri/target/release/bundle/{deb,rpm,appimage,...}/
 ```
 
-Run the Rust test suite (45 tests):
+Run the Rust test suite (60 tests):
 ```bash
 cd src-tauri && cargo test
 ```

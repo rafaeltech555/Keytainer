@@ -65,8 +65,12 @@ None of these are committed to a release yet.
   every route — `Setup`, `Unlock`, `List`, `ItemDetail`, and `Settings`
   (error mapping, change-password, locale switch, keychain toggle, updater,
   and backup/restore) — 62 tests in 8 files (`pnpm test`).
-- **Backend test gaps.** `session` (idle watcher / lock), `keychain`,
-  and `clipboard` auto-clear have no direct tests.
+- **Backend tests.** ✅ `session` (lock/unlock, idle-timer bump, no-touch
+  on a failed command), `clipboard` auto-clear generation/staleness, and
+  `keychain` key encode/decode + 32-byte malformed-key guard are now
+  covered — 60 Rust tests (`cd src-tauri && cargo test`). The remaining
+  untested piece is `spawn_idle_watcher`, which needs a Tauri `AppHandle`
+  and is better suited to an integration test.
 
 ### Features
 - **Password strength meter** at setup and on the item form (currently

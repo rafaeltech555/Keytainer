@@ -11,6 +11,11 @@ Versions follow [SemVer](https://semver.org/).
   navigation, and every route (`Setup`, `Unlock`, `List`, `ItemDetail`,
   `Settings`), including backend-error mapping, change-password, locale
   switch, keychain toggle, the updater, and backup/restore.
+- **Backend test coverage** for the previously untested modules: session
+  state (lock/unlock, idle-timer bump, and that a failed command does not
+  count as activity), clipboard auto-clear generation/staleness logic, and
+  keychain key encode/decode with the 32-byte malformed-key guard. The Rust
+  suite is now 60 tests.
 
 ## [0.2.0] — 2026-05-31
 
