@@ -29,6 +29,17 @@ const en = {
   setup_creating: "Creating…",
   setup_create_btn: "Create vault",
 
+  // Password strength
+  strength_prefix: "Strength:",
+  strength_label_0: "Very weak",
+  strength_label_1: "Weak",
+  strength_label_2: "Fair",
+  strength_label_3: "Good",
+  strength_label_4: "Strong",
+  pw_too_weak: "Password is too weak — add length or variety.",
+  detail_pw_weak_warn: "This password is weak. Click Save again to keep it anyway.",
+  detail_save_weak: "Save anyway",
+
   // Unlock
   unlock_title: "Unlock Keytainer",
   unlock_idle: "Locked automatically (idle too long)",
@@ -138,6 +149,17 @@ const zhTW: Dict = {
   setup_mismatch: "兩次輸入不一致",
   setup_creating: "建立中…",
   setup_create_btn: "建立保險庫",
+
+  // Password strength
+  strength_prefix: "強度：",
+  strength_label_0: "非常弱",
+  strength_label_1: "弱",
+  strength_label_2: "普通",
+  strength_label_3: "良好",
+  strength_label_4: "強",
+  pw_too_weak: "密碼太弱 — 增加長度或多樣性。",
+  detail_pw_weak_warn: "此密碼偏弱，再按一次「儲存」以保留。",
+  detail_save_weak: "仍要儲存",
 
   unlock_title: "解鎖 Keytainer",
   unlock_idle: "已自動鎖定（閒置過久）",
