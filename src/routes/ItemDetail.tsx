@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "../lib/ipc";
-import type { ItemInput, VaultItem, TotpEntry, TotpAlg } from "../lib/types";
+import type { ItemInput, VaultItem, TotpEntry, TotpAlg, PasswordHistoryEntry } from "../lib/types";
 import { isAppError } from "../lib/types";
 import { TotpDisplay } from "../components/TotpDisplay";
 import { useT, type TKey } from "../lib/i18n";
@@ -41,6 +41,10 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
   const [pwCopied, setPwCopied] = useState(false);
   const pwCopiedTimer = useRef<number | null>(null);
   const [showTotpCode, setShowTotpCode] = useState(true);
+  const [history, setHistory] = useState<PasswordHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const histCopiedTimer = useRef<number | null>(null);
 
   useEffect(() => {
     ipc.getSettings()
@@ -66,6 +70,7 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
           tags: it.tags,
         });
         setTagsInput(it.tags.join(", "));
+        setHistory(it.password_history ?? []);
       })
       .catch((e) => setError(isAppError(e) ? e.message : String(e)))
       .finally(() => {
@@ -106,6 +111,24 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
     } catch (e) {
       setError(isAppError(e) ? e.message : String(e));
     }
+  }
+
+  async function copyHistory(index: number) {
+    if (!savedItemId) return;
+    try {
+      await ipc.copyHistoryPassword(savedItemId, index);
+      setCopiedIdx(index);
+      if (histCopiedTimer.current) window.clearTimeout(histCopiedTimer.current);
+      histCopiedTimer.current = window.setTimeout(() => setCopiedIdx(null), 1500);
+    } catch (e) {
+      setError(isAppError(e) ? e.message : String(e));
+    }
+  }
+
+  function restoreHistory(entry: PasswordHistoryEntry) {
+    patch("password", entry.password);
+    setConfirmWeak(false);
+    setShowPw(true);
   }
 
   async function save(e: React.FormEvent) {
@@ -219,6 +242,43 @@ export function ItemDetail({ itemId, onClose, onSaved, onDeleted }: Props) {
             <span className="error-inline">{t("detail_pw_weak_warn")}</span>
           )}
         </label>
+
+        {history.length > 0 && (
+          <div className="history-block">
+            <div className="history-head">
+              <span>{t("detail_history_section")}</span>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setShowHistory((s) => !s)}
+              >
+                {showHistory ? t("detail_history_hide") : t("detail_history_show")}
+              </button>
+            </div>
+            <ul className="history-list">
+              {history.map((entry, i) => (
+                <li key={i} className="history-row">
+                  <div className="history-main">
+                    <span className="history-pw">
+                      {showHistory ? entry.password : "••••••••"}
+                    </span>
+                    <span className="history-date">
+                      {new Date(entry.changed_at * 1000).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="history-actions">
+                    <button type="button" onClick={() => copyHistory(i)}>
+                      {copiedIdx === i ? t("detail_history_copied") : t("detail_history_copy")}
+                    </button>
+                    <button type="button" onClick={() => restoreHistory(entry)}>
+                      {t("detail_history_restore")}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <label>
           {t("detail_url")}

@@ -12,6 +12,7 @@ const ipc = vi.hoisted(() => ({
   deleteItem: vi.fn(),
   generatePassword: vi.fn(),
   copyPassword: vi.fn(),
+  copyHistoryPassword: vi.fn(),
   computeTotp: vi.fn(),
   copyTotp: vi.fn(),
   getSystemLocale: vi.fn(),
@@ -182,5 +183,39 @@ describe("ItemDetail — existing item", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(ipc.deleteItem).not.toHaveBeenCalled();
     expect(onDeleted).not.toHaveBeenCalled();
+  });
+
+  it("shows password history with reveal, copy, and restore", async () => {
+    ipc.getItem.mockResolvedValue(
+      vaultItem({
+        password_history: [
+          { password: "oldpw1", changed_at: 1700000000 },
+          { password: "oldpw2", changed_at: 1690000000 },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderDetail("1");
+
+    expect(await screen.findByText("Password history")).toBeInTheDocument();
+    expect(screen.queryByText("oldpw1")).not.toBeInTheDocument(); // masked
+
+    await user.click(screen.getByRole("button", { name: "Show passwords" }));
+    expect(screen.getByText("oldpw1")).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: "Copy" })[0]);
+    expect(ipc.copyHistoryPassword).toHaveBeenCalledWith("1", 0);
+
+    await user.click(screen.getAllByRole("button", { name: "Use again" })[1]);
+    // Restore populated the password field (found by its value — the masked
+    // history spans aren't form elements, so this matches only the input).
+    expect(screen.getByDisplayValue("oldpw2")).toBeInTheDocument();
+  });
+
+  it("hides the history section when there is none", async () => {
+    ipc.getItem.mockResolvedValue(vaultItem({ password_history: [] }));
+    renderDetail("1");
+    await screen.findByDisplayValue("GitHub");
+    expect(screen.queryByText("Password history")).not.toBeInTheDocument();
   });
 });
