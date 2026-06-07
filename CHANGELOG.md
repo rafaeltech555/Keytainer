@@ -6,6 +6,11 @@ Versions follow [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Generator upgrade.** The password generator now has an inline panel on
+  the item screen with a configurable length, a symbols toggle, an
+  avoid-ambiguous-characters toggle, and a passphrase mode (EFF large
+  wordlist) with adjustable word count, separator, capitalization, and an
+  optional trailing number.
 - **Password history.** Each item now keeps its last 10 previous passwords,
   captured automatically when a password changes. View, copy (with clipboard
   auto-clear), or restore a previous password from the item screen. History

@@ -108,12 +108,12 @@ pnpm tauri build
 # → src-tauri/target/release/bundle/{deb,rpm,appimage,...}/
 ```
 
-Run the Rust test suite (71 tests):
+Run the Rust test suite (79 tests):
 ```bash
 cd src-tauri && cargo test
 ```
 
-Run the frontend test suite (Vitest + Testing Library, 78 tests):
+Run the frontend test suite (Vitest + Testing Library, 79 tests):
 ```bash
 pnpm test          # one-shot
 pnpm test:watch    # watch mode
