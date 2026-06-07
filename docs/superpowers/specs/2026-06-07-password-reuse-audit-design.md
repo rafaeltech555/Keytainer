@@ -1,59 +1,50 @@
-# Password Reuse & Weak-Password Audit — Design
+# 密碼重用與弱密碼 Audit — 設計
 
-Date: 2026-06-07
-Status: Approved (pending implementation)
+日期:2026-06-07
+狀態:已核准(待實作)
 
-## Goal
+## 目標
 
-Help users find and fix their weakest links: passwords reused across several
-items, and passwords that are simply weak. Surface them in a dedicated audit
-screen reachable from the vault list, with each finding linking to the item
-so the user can fix it. This implements the "Duplicate / reused password
-detection and a basic audit view" item from `ROADMAP.md`.
+幫使用者找出並修正最弱的環節:被多個項目重用的密碼,以及單純偏弱的密碼。
+在一個從金庫清單進入的專屬 audit 畫面中呈現它們,每個發現都連到對應項目以
+便修正。本設計實作 `ROADMAP.md` 的「重複/重用密碼偵測與基本 audit 視圖」。
 
-Scope is **reuse + weak** detection only. Password history is a separate,
-later cycle (its own spec → plan → implementation).
+範圍**僅限重用 + 弱**偵測。密碼歷史是另一個獨立、之後的 cycle(各自有
+spec → plan → 實作)。
 
-## Security boundary (drives the architecture)
+## 安全邊界(決定整體架構)
 
-`list_items` returns `ItemSummary` values that deliberately **omit the
-password** — passwords live in the Rust backend and only leave it via
-`get_item` (single item) or `copy_password` (to the clipboard). Loading every
-password into the frontend at once to analyse them would put every secret in
-the JS heap simultaneously, which this design avoids.
+`list_items` 回傳的 `ItemSummary` 刻意**不含密碼** —— 密碼留在 Rust 後端,
+只透過 `get_item`(單一項目)或 `copy_password`(複製到剪貼簿)離開後端。
+若把所有密碼一次載入前端分析,等於把每個密鑰同時放進 JS heap,本設計避免
+這件事。
 
-Therefore the audit runs **entirely in the Rust backend**. It compares
-passwords internally and returns a report of *which items* have problems —
-the report never contains a password value.
+因此 audit **完全在 Rust 後端執行**。它在內部比對密碼,只回傳「哪些項目」
+有問題 —— 報告**永不**包含密碼值。
 
-## Approach
+## 做法
 
-A pure backend function analyses the unlocked vault and returns a structured
-report; a Tauri command exposes it; a dedicated frontend screen renders it.
+由一個純後端函式分析已解鎖的金庫並回傳結構化報告;一個 Tauri 命令對外
+暴露它;前端一個專屬畫面負責渲染。
 
-- **Reuse:** group items by their exact password string (case-sensitive,
-  byte-for-byte). Skip empty passwords. Any group with ≥2 items is a reuse
-  group.
-- **Weak:** score each non-empty password with the Rust `zxcvbn` crate;
-  `score < WEAK_SCORE` (= 2) flags the item as weak. This matches the
-  frontend strength meter's "fair" cutoff (`MIN_MASTER_SCORE = 2`), so the
-  two features agree on what "weak" means.
+- **重用:** 依完全相同的密碼字串(區分大小寫、逐位元組)分組。跳過空密碼。
+  任何 ≥2 個項目的組即為一個 reuse group。
+- **弱:** 每個非空密碼以 Rust `zxcvbn` crate 評分;`score < WEAK_SCORE`
+  (= 2)即標記為弱。此門檻對齊前端強度計的「fair」界限
+  (`MIN_MASTER_SCORE = 2`),讓兩個功能對「弱」的定義一致。
 
-(Rejected: scoring in the frontend — would require shipping all passwords to
-JS, breaking the security boundary. Rejected: a lightweight Rust heuristic —
-the user chose zxcvbn for parity with the meter.)
+(已否決:在前端評分 —— 需把所有密碼送進 JS,破壞安全邊界。已否決:Rust
+輕量 heuristic —— 使用者選擇 zxcvbn 以與強度計一致。)
 
-## Backend
+## 後端
 
-### New crate dependency
+### 新增 crate 依賴
 
-Add `zxcvbn` (Rust) to `src-tauri/Cargo.toml` as a normal (non-optional)
-dependency.
+在 `src-tauri/Cargo.toml` 加入 `zxcvbn`(Rust)作為一般(非 optional)依賴。
 
 ### `src-tauri/src/audit.rs`
 
-A pure function over the vault plus the report types. No I/O, no Tauri — unit
-testable directly.
+一個對金庫運作的純函式,加上報告型別。無 I/O、無 Tauri —— 可直接單元測試。
 
 ```rust
 use serde::Serialize;
@@ -89,24 +80,21 @@ pub struct AuditReport {
     pub weak: Vec<WeakItem>,
 }
 
-pub fn audit(vault: &Vault) -> AuditReport { /* see Behavior */ }
+pub fn audit(vault: &Vault) -> AuditReport { /* 見「行為」 */ }
 ```
 
-**Behavior:**
-- Iterate `vault.items`, ignoring any item whose `password` is empty.
-- **Reuse:** build a map `password -> Vec<AuditItemRef>`; for each entry with
-  ≥2 refs, emit a `ReuseGroup`. Group order: by the first item's `site_name`
-  (case-insensitive); items within a group keep vault order. (Deterministic
-  output for stable tests/UI.)
-- **Weak:** for each non-empty-password item, compute the zxcvbn score; if
-  `score < WEAK_SCORE`, push a `WeakItem`. Order weak items by `site_name`
-  (case-insensitive).
-- The shared password value is never stored in the report.
+**行為:**
+- 走訪 `vault.items`,略過任何 `password` 為空的項目。
+- **重用:** 建立 `password -> Vec<AuditItemRef>` 的對應;每個有 ≥2 個 ref
+  的條目產生一個 `ReuseGroup`。組的順序:依第一個項目的 `site_name`
+  (不分大小寫);組內項目維持金庫順序。(輸出具決定性,利於測試/UI 穩定。)
+- **弱:** 每個非空密碼項目計算 zxcvbn 分數;若 `score < WEAK_SCORE`,加入
+  一個 `WeakItem`。弱項目依 `site_name`(不分大小寫)排序。
+- 共用的密碼值永不存進報告。
 
-> zxcvbn crate note: call the crate's scoring entry point and read its 0–4
-> score. Do not pass site_name/username as user-inputs (parity with the
-> frontend meter, which passes none). The exact crate API (return type /
-> method name) is pinned during implementation against the resolved version.
+> zxcvbn crate 註記:呼叫該 crate 的評分入口、讀取其 0–4 分數。**不**把
+> site_name/username 當作 user-inputs 傳入(與前端強度計一致,前端未傳任何
+> input)。確切的 crate API(回傳型別/方法名)於實作時對照解析到的版本釘定。
 
 ### `src-tauri/src/commands.rs`
 
@@ -117,11 +105,10 @@ pub fn audit_passwords(state: State<'_, AppState>) -> AppResult<audit::AuditRepo
 }
 ```
 
-Register the command in the Tauri `invoke_handler` and add `pub mod audit;`
-to `lib.rs`. The command is invoked on demand (when the audit screen opens),
-not on every list load.
+在 Tauri 的 `invoke_handler` 註冊此命令,並於 `lib.rs` 加入 `pub mod audit;`。
+此命令**按需**呼叫(開啟 audit 畫面時),而非每次載入清單時。
 
-## Frontend
+## 前端
 
 ### `src/lib/types.ts`
 
@@ -151,39 +138,35 @@ interface Props {
 }
 ```
 
-- On mount, calls `ipc.auditPasswords()`; shows a loading state, then the
-  report.
-- Header: a back button + title (`audit_title`) + a "rescan" button that
-  re-fetches.
-- Summary line: counts of reuse groups and weak items (`audit_summary`).
-- **Reused** section: one card per `ReuseGroup`; a "♻ N items share one
-  password" label; each item is a clickable row (site_name + username)
-  calling `onSelect(item.id)`.
-- **Weak** section: clickable rows, each with a weak pill.
-- Empty state (no reused and no weak): `audit_none` ("No problems found ✓").
-- Never renders a password value.
-- Errors map via the existing `isAppError` pattern.
+- 掛載時呼叫 `ipc.auditPasswords()`;先顯示載入狀態,再顯示報告。
+- 標頭:返回按鈕 + 標題(`audit_title`)+ 重新掃描按鈕(重新抓取)。
+- 摘要列:reuse 組數與 weak 數(`audit_summary`)。
+- **重用**區:每個 `ReuseGroup` 一張卡;一個「♻ N 個項目共用一組密碼」標籤;
+  每個項目是可點的列(site_name + username),點擊呼叫 `onSelect(item.id)`。
+- **弱**區:可點的列,每列一個 weak pill。
+- 空狀態(沒有重用也沒有弱):`audit_none`(「沒有發現問題 ✓」)。
+- 永不渲染密碼值。
+- 錯誤沿用既有的 `isAppError` 模式處理。
 
-### Navigation — `src/App.tsx`
+### 導航 — `src/App.tsx`
 
-- Extend `Screen`: add `{ kind: "audit" }`, and add an origin to detail:
-  `{ kind: "detail"; itemId: string | "new"; from?: "list" | "audit" }`.
-- `List` gains an `onAudit` prop; its header gets a "Security check" button
-  (label only — no count, so the list never triggers an audit) that sets
-  `{ kind: "audit" }`.
-- `Audit` screen: `onBack` → `{ kind: "list" }`; `onSelect(id)` →
-  `{ kind: "detail", itemId: id, from: "audit" }`.
-- `ItemDetail`'s `onClose` / `onSaved` / `onDeleted` route back to the
-  origin: if `screen.from === "audit"`, return to `{ kind: "audit" }`
-  (re-fetches, so fixed items disappear); otherwise `{ kind: "list" }` as
-  today. `onSaved`/`onDeleted` still `bumpList()`.
+- 擴充 `Screen`:加入 `{ kind: "audit" }`,並為 detail 加上來源:
+  `{ kind: "detail"; itemId: string | "new"; from?: "list" | "audit" }`。
+- `List` 增加 `onAudit` prop;其標頭加一顆「安全檢查」按鈕(僅文字、不帶
+  數字,讓清單永不觸發 audit),點擊設為 `{ kind: "audit" }`。
+- `Audit` 畫面:`onBack` → `{ kind: "list" }`;`onSelect(id)` →
+  `{ kind: "detail", itemId: id, from: "audit" }`。
+- `ItemDetail` 的 `onClose` / `onSaved` / `onDeleted` 回到來源:若
+  `screen.from === "audit"`,回到 `{ kind: "audit" }`(會重新抓取,已修的
+  項目自動消失);否則維持現狀回到 `{ kind: "list" }`。`onSaved`/`onDeleted`
+  仍呼叫 `bumpList()`。
 
 ### `src/routes/List.tsx`
 
-Add the "Security check" button to the existing header actions, wired to the
-new `onAudit` prop. No other List behavior changes.
+在既有標頭操作區加上「安全檢查」按鈕,接到新的 `onAudit` prop。List 其餘
+行為不變。
 
-### i18n (`src/lib/i18n.tsx`, EN + zh-TW)
+### i18n（`src/lib/i18n.tsx`,EN + zh-TW)
 
 | Key | EN | 繁中 |
 |-----|----|----|
@@ -198,57 +181,49 @@ new `onAudit` prop. No other List behavior changes.
 | `audit_none` | No problems found ✓ | 沒有發現問題 ✓ |
 | `audit_loading` | Checking… | 檢查中… |
 
-(`audit_summary` / `audit_group_count` use the existing `{name}`-style
-placeholder mechanism in `t`.)
+（`audit_summary` / `audit_group_count` 使用 `t` 既有的 `{name}` 佔位機制。)
 
-### Styling (`src/App.css`)
+### 樣式（`src/App.css`)
 
-Append an `audit-*` block (reuse-group cards, clickable finding rows, the
-weak/reuse pills). Reuse existing palette variables; no inline pixel styles
-in the component. The chosen look matches
-`docs/superpowers/mockups/audit-A-dedicated-screen.html`.
+附加一個 `audit-*` 區塊(reuse 組卡片、可點的發現列、weak/reuse pill)。重用
+既有的 palette 變數;元件內不寫死像素值。外觀對應
+`docs/superpowers/mockups/audit-A-dedicated-screen.html`。
 
-## Testing
+## 測試
 
-**Backend — `src-tauri/src/audit.rs` (`#[cfg(test)]`):**
-- Three items sharing one password produce exactly one `ReuseGroup` with
-  three refs (correct ids/site_names).
-- Two distinct shared passwords produce two separate groups; unique passwords
-  produce none.
-- A common password (`"password"`) is flagged weak; a strong passphrase is
-  not.
-- Empty-password items are skipped entirely (neither reused nor weak).
-- The report contains no password strings (structural — `AuditReport` has no
-  password field; assert via the data, e.g. a reused pair still exposes only
-  id/site_name/username).
-- Output ordering is deterministic (by site_name).
+**後端 — `src-tauri/src/audit.rs`（`#[cfg(test)]`):**
+- 三個項目共用一組密碼 → 恰好一個 `ReuseGroup`、含三個 ref(id/site_name
+  正確)。
+- 兩組不同的共用密碼 → 兩個獨立的組;每個都唯一的密碼 → 零組。
+- 常見密碼(`"password"`)被標記為弱;強 passphrase 不被標。
+- 空密碼項目完全略過(既非重用也非弱)。
+- 報告不含任何密碼字串(結構性 —— `AuditReport` 沒有密碼欄;以資料驗證,
+  例如重用配對也只暴露 id/site_name/username)。
+- 輸出排序具決定性(依 site_name)。
 
-**Frontend:**
-- `src/routes/Audit.test.tsx` — mock `ipc.auditPasswords`:
-  - renders a reuse group and a weak list from a fixture report; clicking a
-    finding calls `onSelect` with the item id;
-  - an empty report renders `audit_none`;
-  - never shows a password (fixtures contain none, by design).
-- `src/routes/List.test.tsx` (addition) — the "Security check" button calls
-  `onAudit`.
-- `src/App.test.tsx` (addition, if feasible without overreach) — navigating
-  list → audit → detail(from audit) → back returns to audit. (If this proves
-  brittle against the existing App test setup, cover the routing via the
-  unit-level props instead and note it.)
+**前端:**
+- `src/routes/Audit.test.tsx` —— mock `ipc.auditPasswords`:
+  - 以一份 fixture 報告渲染一個 reuse 組與一個 weak 清單;點擊發現會以項目
+    id 呼叫 `onSelect`;
+  - 空報告渲染 `audit_none`;
+  - 永不顯示密碼(依設計,fixture 本就不含密碼)。
+- `src/routes/List.test.tsx`(新增)—— 「安全檢查」按鈕呼叫 `onAudit`。
+- `src/App.test.tsx`(若不過度牽動既有設定則新增)—— 導航
+  list → audit → detail（from audit)→ 返回會回到 audit。(若此案對既有
+  App 測試設定過於脆弱,改以 props 層級驗證導航並註記。)
 
-## Out of scope (YAGNI)
+## 不做（YAGNI）
 
-- Inline reuse/weak badges on the list rows (approach B).
-- Automatic/background scanning or a list-level issue count.
-- "Stale password" (too-long-unchanged) detection.
-- One-click password reset/rotation from the audit.
-- Showing the numeric weak score in the UI (binary weak/not-weak only).
-- Password history (separate later cycle).
+- 清單列上的行內 reuse/weak 徽章(取向 B)。
+- 自動/背景掃描或清單層級的問題計數。
+- 「太久未更改」(stale password)偵測。
+- audit 內一鍵重設/輪替密碼。
+- 在 UI 顯示弱密碼的數值分數(僅二元 weak/not-weak)。
+- 密碼歷史(另一個之後的 cycle)。
 
-## Docs to update on completion
+## 完成時要更新的文件
 
-- `CHANGELOG.md` (Unreleased → Added).
-- `ROADMAP.md` (mark the reuse/audit bullet done; leave password history as
-  next).
-- `README.md` if a test-count line needs bumping.
+- `CHANGELOG.md`(Unreleased → Added)。
+- `ROADMAP.md`(將重用/audit 那項標為完成;密碼歷史留作下一項)。
+- `README.md`(若測試數字那行需更新)。
 </content>
