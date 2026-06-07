@@ -6,6 +6,10 @@ Versions follow [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Password history.** Each item now keeps its last 10 previous passwords,
+  captured automatically when a password changes. View, copy (with clipboard
+  auto-clear), or restore a previous password from the item screen. History
+  travels inside the encrypted vault and its backups.
 - **Password audit.** A "Security check" screen (reachable from the vault
   list) flags reused passwords (two or more items sharing one password) and
   weak passwords (zxcvbn score below "fair"), computed entirely in the Rust
