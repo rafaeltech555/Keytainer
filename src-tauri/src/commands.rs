@@ -378,22 +378,8 @@ pub fn save_settings(new_settings: Settings) -> AppResult<()> {
 /// Password generator. Produces fresh randomness from the OS CSPRNG;
 /// doesn't touch the vault, so it's available even when locked.
 #[tauri::command]
-pub fn generate_password(length: usize, include_symbols: bool) -> String {
-    use rand::seq::SliceRandom;
-    let length = length.clamp(8, 128);
-    let mut alphabet: Vec<u8> =
-        (b'a'..=b'z').chain(b'A'..=b'Z').chain(b'0'..=b'9').collect();
-    if include_symbols {
-        alphabet.extend_from_slice(b"!@#$%^&*()-_=+[]{};:,.?/");
-    }
-    let mut rng = rand::thread_rng();
-    let pw: String = (0..length)
-        .map(|_| *alphabet.choose(&mut rng).expect("alphabet is non-empty") as char)
-        .collect();
-    // Best-effort: scrub the working alphabet. The returned String necessarily
-    // crosses the IPC boundary into JS-managed memory, which we can't zeroize.
-    alphabet.zeroize();
-    pw
+pub fn generate_password(opts: crate::generator::GenOptions) -> String {
+    crate::generator::generate(&opts)
 }
 
 // ──────────────────────────── Backup / Restore ────────────────────────────
