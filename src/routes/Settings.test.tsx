@@ -25,6 +25,12 @@ const updater = vi.hoisted(() => ({ check: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => updater);
 vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: vi.fn() }));
 
+const strength = vi.hoisted(() => ({
+  scorePassword: vi.fn(),
+  MIN_MASTER_SCORE: 2,
+}));
+vi.mock("../lib/strength", () => strength);
+
 import { Settings } from "./Settings";
 
 const settings = (over: Partial<SettingsType> = {}): SettingsType => ({
@@ -45,6 +51,7 @@ beforeEach(() => {
   ipc.keychainIsEnabled.mockResolvedValue(false);
   ipc.changePassword.mockResolvedValue(undefined);
   ipc.importVault.mockResolvedValue({ added: 0, updated: 0 });
+  strength.scorePassword.mockReturnValue(4);
 });
 
 describe("Settings — load & save", () => {
@@ -115,6 +122,19 @@ describe("Settings — change password", () => {
 
     expect(ipc.changePassword).toHaveBeenCalledWith("oldpassword", "newpassword");
     expect(await screen.findByText("Master password changed ✓")).toBeInTheDocument();
+  });
+
+  it("keeps the change button disabled when the new password is too weak", async () => {
+    strength.scorePassword.mockReturnValue(1);
+    const user = userEvent.setup();
+    renderSettings();
+    await screen.findByRole("heading", { name: "Settings" });
+
+    await user.type(screen.getByLabelText("Current password"), "oldpassword");
+    await user.type(screen.getByLabelText("New password (at least 8 characters)"), "weakish12");
+    await user.type(screen.getByLabelText("Confirm new password"), "weakish12");
+    expect(screen.getByText("Password is too weak — add length or variety.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change password" })).toBeDisabled();
   });
 });
 

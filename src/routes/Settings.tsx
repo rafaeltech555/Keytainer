@@ -6,6 +6,8 @@ import { ipc } from "../lib/ipc";
 import type { Settings as SettingsType } from "../lib/types";
 import { isAppError } from "../lib/types";
 import { useI18n, type LocalePref } from "../lib/i18n";
+import { scorePassword, MIN_MASTER_SCORE } from "../lib/strength";
+import { StrengthMeter } from "../components/StrengthMeter";
 
 interface Props {
   onClose: () => void;
@@ -102,7 +104,13 @@ export function Settings({ onClose }: Props) {
   async function changePassword() {
     setPwErr(null);
     setPwMsg(null);
-    if (newPw.length < 8 || newPw !== newPw2 || pwBusy) return;
+    if (
+      newPw.length < 8 ||
+      scorePassword(newPw) < MIN_MASTER_SCORE ||
+      newPw !== newPw2 ||
+      pwBusy
+    )
+      return;
     setPwBusy(true);
     try {
       await ipc.changePassword(curPw, newPw);
@@ -213,7 +221,10 @@ export function Settings({ onClose }: Props) {
     );
   }
 
-  const newPwOk = newPw.length >= 8 && newPw === newPw2;
+  const newPwScore = scorePassword(newPw);
+  const newPwTooWeak = newPw.length >= 8 && newPwScore < MIN_MASTER_SCORE;
+  const newPwOk =
+    newPw.length >= 8 && newPwScore >= MIN_MASTER_SCORE && newPw === newPw2;
 
   return (
     <div className="screen settings-screen">
@@ -294,6 +305,10 @@ export function Settings({ onClose }: Props) {
             onChange={(e) => setNewPw(e.target.value)}
             autoComplete="new-password"
           />
+          <StrengthMeter password={newPw} />
+          {newPwTooWeak && (
+            <span className="error-inline">{t("pw_too_weak")}</span>
+          )}
         </label>
         <label>
           {t("settings_new_pw_confirm")}
