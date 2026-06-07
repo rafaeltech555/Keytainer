@@ -88,10 +88,10 @@ Keytainer 的開發現況與接下來可能的方向。這是一份**活文件**
   (Authenticode),以去除首次啟動的 Gatekeeper / SmartScreen 警告。
   需付費憑證;既有的更新器簽章是**不同**機制(它驗證的是更新內容,
   而非 OS 層級的安裝檔)。
-- **發布流程修正:** `tauri-action` matrix 目前會競態,可能對同一個 tag
-  產生兩個 draft release 並分裂 `latest.json`
-  (見 [README](README.md#cutting-a-release) 的說明)。改成單一 release
-  並合併 `latest.json`。
+- **發布流程修正。** ✅ 改成三段式(`create-release` 建單一 draft →
+  `build-tauri` matrix 以同一 release id 上傳並合併 `latest.json` →
+  `publish-release` 取消 draft),消除原本 matrix 競態產生兩個 draft、
+  分裂 `latest.json` 的問題。
 
 ## 非目標（Non-goals）
 

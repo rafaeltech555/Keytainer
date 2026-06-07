@@ -5,6 +5,13 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Release workflow race.** The release pipeline is now a three-job pattern
+  (create one draft release → matrix builds upload to that release id →
+  publish), so a multi-platform build can no longer fork into two draft
+  releases with a split `latest.json`. The updater manifest now covers every
+  platform in a single release.
+
 ### Added
 - **Generator upgrade.** The password generator now has an inline panel on
   the item screen with a configurable length, a symbols toggle, an
