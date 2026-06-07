@@ -7,10 +7,11 @@ interface Props {
   onSelect: (id: string | "new") => void;
   onLock: () => void;
   onSettings: () => void;
+  onAudit: () => void;
   refreshKey: number;
 }
 
-export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
+export function List({ onSelect, onLock, onSettings, onAudit, refreshKey }: Props) {
   const t = useT();
   const [items, setItems] = useState<ItemSummary[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -52,6 +53,7 @@ export function List({ onSelect, onLock, onSettings, refreshKey }: Props) {
         <h1>Keytainer</h1>
         <div className="header-actions">
           <button onClick={() => onSelect("new")}>{t("list_add")}</button>
+          <button className="secondary" onClick={onAudit}>{t("list_audit_btn")}</button>
           <button className="secondary" onClick={onSettings}>⚙</button>
           <button className="secondary" onClick={handleLock}>{t("list_lock")}</button>
         </div>

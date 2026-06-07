@@ -5,6 +5,7 @@ import { Unlock } from "./routes/Unlock";
 import { List } from "./routes/List";
 import { ItemDetail } from "./routes/ItemDetail";
 import { Settings } from "./routes/Settings";
+import { Audit } from "./routes/Audit";
 import { ipc } from "./lib/ipc";
 import { I18nProvider, useT } from "./lib/i18n";
 import "./App.css";
@@ -14,7 +15,8 @@ type Screen =
   | { kind: "setup" }
   | { kind: "unlock"; reason?: "idle" | "manual" }
   | { kind: "list" }
-  | { kind: "detail"; itemId: string | "new" }
+  | { kind: "audit" }
+  | { kind: "detail"; itemId: string | "new"; from?: "list" | "audit" }
   | { kind: "settings" };
 
 function AppInner() {
@@ -101,22 +103,34 @@ function AppInner() {
             setScreen({ kind: "unlock", reason: "manual" });
           }}
           onSettings={() => setScreen({ kind: "settings" })}
+          onAudit={() => setScreen({ kind: "audit" })}
         />
       );
 
-    case "detail":
+    case "detail": {
+      const back: Screen =
+        screen.from === "audit" ? { kind: "audit" } : { kind: "list" };
       return (
         <ItemDetail
           itemId={screen.itemId}
-          onClose={() => setScreen({ kind: "list" })}
+          onClose={() => setScreen(back)}
           onSaved={() => {
             bumpList();
-            setScreen({ kind: "list" });
+            setScreen(back);
           }}
           onDeleted={() => {
             bumpList();
-            setScreen({ kind: "list" });
+            setScreen(back);
           }}
+        />
+      );
+    }
+
+    case "audit":
+      return (
+        <Audit
+          onBack={() => setScreen({ kind: "list" })}
+          onSelect={(id) => setScreen({ kind: "detail", itemId: id, from: "audit" })}
         />
       );
 

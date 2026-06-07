@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Capture the "vault-locked" handler App registers so tests can emit the event.
 const tauri = vi.hoisted(() => ({
@@ -22,6 +23,8 @@ const ipc = vi.hoisted(() => ({
   getSystemLocale: vi.fn(),
   getSettings: vi.fn(),
   pingActivity: vi.fn(),
+  auditPasswords: vi.fn(),
+  getItem: vi.fn(),
 }));
 vi.mock("./lib/ipc", () => ({ ipc }));
 
@@ -38,6 +41,11 @@ beforeEach(() => {
   ipc.getSystemLocale.mockResolvedValue("en");
   ipc.getSettings.mockResolvedValue({ locale: "en" });
   ipc.pingActivity.mockResolvedValue(undefined);
+  ipc.auditPasswords.mockResolvedValue({ reused: [], weak: [] });
+  ipc.getItem.mockResolvedValue({
+    id: "x", site_name: "Forum", username: "nick", password: "weak",
+    totp: null, url: "", notes: "", tags: [],
+  });
 });
 
 async function emitLock(payload: "idle" | "manual") {
@@ -94,5 +102,30 @@ describe("App lock navigation", () => {
     expect(
       screen.queryByText("Locked automatically (idle too long)"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("App audit navigation", () => {
+  it("goes list → audit → item → back to audit", async () => {
+    ipc.auditPasswords.mockResolvedValue({
+      reused: [],
+      weak: [{ item: { id: "x", site_name: "Forum", username: "nick" }, score: 1 }],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("heading", { name: "Keytainer", level: 1 });
+
+    await user.click(screen.getByRole("button", { name: "Security check" }));
+    expect(
+      await screen.findByRole("heading", { name: "Security check" }),
+    ).toBeInTheDocument();
+
+    await user.click(await screen.findByText("Forum"));
+    await screen.findByDisplayValue("Forum"); // ItemDetail loaded
+
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+    expect(
+      await screen.findByRole("heading", { name: "Security check" }),
+    ).toBeInTheDocument();
   });
 });

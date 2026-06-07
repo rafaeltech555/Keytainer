@@ -33,6 +33,7 @@ function renderList(props: Partial<Parameters<typeof List>[0]> = {}) {
       onSelect={props.onSelect ?? vi.fn()}
       onLock={props.onLock ?? vi.fn()}
       onSettings={props.onSettings ?? vi.fn()}
+      onAudit={props.onAudit ?? vi.fn()}
     />,
   );
 }
@@ -103,5 +104,14 @@ describe("List", () => {
     await user.click(screen.getByRole("button", { name: "🔒 Lock" }));
     expect(ipc.lock).toHaveBeenCalledTimes(1);
     expect(onLock).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the audit screen from the security-check button", async () => {
+    const onAudit = vi.fn();
+    const user = userEvent.setup();
+    renderList({ onAudit });
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading…"));
+    await user.click(screen.getByRole("button", { name: "Security check" }));
+    expect(onAudit).toHaveBeenCalledTimes(1);
   });
 });
