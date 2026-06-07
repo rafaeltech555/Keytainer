@@ -41,6 +41,9 @@ export const ipc = {
 
   copyPassword: (id: string) => invoke<void>("copy_password", { id }),
 
+  copyHistoryPassword: (id: string, index: number) =>
+    invoke<void>("copy_history_password", { id, index }),
+
   copyTotp: (id: string) => invoke<void>("copy_totp", { id }),
 
   getSettings: () => invoke<Settings>("get_settings"),

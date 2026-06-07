@@ -8,6 +8,11 @@ export interface TotpEntry {
   issuer?: string | null;
 }
 
+export interface PasswordHistoryEntry {
+  password: string;
+  changed_at: number;
+}
+
 export interface VaultItem {
   id: string;
   site_name: string;
@@ -17,6 +22,7 @@ export interface VaultItem {
   url?: string | null;
   notes?: string | null;
   tags: string[];
+  password_history?: PasswordHistoryEntry[];
   created_at: number;
   updated_at: number;
 }
