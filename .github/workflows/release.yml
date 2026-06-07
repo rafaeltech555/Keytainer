@@ -6,8 +6,50 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Three-job pattern so a matrix build can't race into duplicate draft releases
+# or split the updater `latest.json`:
+#   1. create-release  — make ONE draft release, output its id
+#   2. build-tauri      — every platform uploads to that release id; tauri-action
+#                         merges each platform's signature into one latest.json
+#   3. publish-release  — flip the release out of draft once all builds succeed
 jobs:
-  build:
+  create-release:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create draft release
+        id: create-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isTag = context.ref.startsWith('refs/tags/');
+            const tag = isTag
+              ? context.ref.replace('refs/tags/', '')
+              : `v0.0.0-ci.${context.runNumber}`;
+            const name = isTag ? `Keytainer ${tag}` : `dry-run ${tag}`;
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name,
+              body: [
+                'See README for install instructions.',
+                'Linux: `.deb` or `.AppImage`. Windows: `-setup.exe`. macOS: `.dmg`.',
+                'macOS / Windows binaries are **unsigned** — Gatekeeper / SmartScreen',
+                'will warn on first launch. See README for the bypass steps.',
+              ].join('\n'),
+              draft: true,
+              prerelease: false,
+            });
+            return data.id;
+
+  build-tauri:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -62,20 +104,32 @@ jobs:
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
-      - name: Build & publish
+      - name: Build & upload to the release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}-ci', github.run_number) }}
-          releaseName: 'Keytainer ${{ github.ref_type == ''tag'' && github.ref_name || format(''dry-run v{0}'', github.run_number) }}'
-          releaseBody: |
-            See README for install instructions.
-            Linux: `.deb` or `.AppImage`. Windows: `-setup.exe`. macOS: `.dmg`.
-            macOS / Windows binaries are **unsigned** — Gatekeeper / SmartScreen
-            will warn on first launch. See README for the bypass steps.
-          releaseDraft: true
-          prerelease: false
+          # Upload to the single release created above (by id, not by tag) so
+          # the matrix can't fork into duplicate releases, and so each
+          # platform's updater signature is merged into one latest.json.
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
+
+  publish-release:
+    needs: [create-release, build-tauri]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the release (undraft)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release_id }},
+              draft: false,
+            });
